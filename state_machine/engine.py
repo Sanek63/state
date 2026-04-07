@@ -33,6 +33,7 @@ class StatefulWorkflow:
         workflow.validate()
         self._workflow = workflow
         self._trigger_factories = trigger_factories
+        self._validate_trigger_factories()
         self._model = WorkflowModel()
         self._machine = Machine(
             model=self._model,
@@ -45,6 +46,9 @@ class StatefulWorkflow:
     @property
     def current_node(self) -> str:
         return self._model.state
+
+    def reset(self) -> None:
+        self._model.state = self._workflow.start_node
 
     def step(self, context: TriggerContextDTO) -> WorkflowStepResultDTO:
         node = self._workflow.nodes[self._model.state]
@@ -82,10 +86,16 @@ class StatefulWorkflow:
         return history
 
     def _build_trigger(self, trigger_key: str, options: dict) -> BaseTrigger:
-        factory = self._trigger_factories.get(trigger_key)
-        if not factory:
-            raise KeyError(f"Trigger factory not found for key '{trigger_key}'")
+        factory = self._trigger_factories[trigger_key]
         return factory(options)
+
+    def _validate_trigger_factories(self) -> None:
+        used_trigger_keys = {node.trigger_key for node in self._workflow.nodes.values()}
+        missing = sorted(used_trigger_keys - set(self._trigger_factories.keys()))
+        if missing:
+            raise KeyError(
+                "Trigger factories not found for keys: " + ", ".join(f"'{key}'" for key in missing)
+            )
 
     def _register_transitions(self) -> None:
         for node in self._workflow.nodes.values():
