@@ -86,7 +86,12 @@ class StatefulWorkflow:
         return history
 
     def _build_trigger(self, trigger_key: str, options: dict) -> BaseTrigger:
-        factory = self._trigger_factories[trigger_key]
+        factory = self._trigger_factories.get(trigger_key)
+        if factory is None:
+            raise KeyError(
+                f"Trigger factory not found for key '{trigger_key}'. "
+                "Callers must provide complete trigger_factories for the workflow."
+            )
         return factory(options)
 
     def _validate_trigger_factories(self) -> None:
