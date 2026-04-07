@@ -14,7 +14,7 @@ from state_machine.triggers import AlwaysNoTrigger, AlwaysYesTrigger, ContainsKe
 class StateMachineTests(unittest.TestCase):
     @dataclass(slots=True)
     class _ApprovedContext(TriggerContextDTO):
-        approved: bool = False
+        approved: bool | None = None
 
     def test_can_build_workflow_graph(self) -> None:
         workflow = WorkflowDTO(

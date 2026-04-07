@@ -10,6 +10,8 @@ class DecisionDTO(str, Enum):
 
 @dataclass(slots=True)
 class TriggerContextDTO:
+    """Base context DTO for workflow execution; extend with concrete context fields."""
+
     pass
 
 

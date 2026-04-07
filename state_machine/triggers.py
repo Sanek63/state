@@ -26,5 +26,9 @@ class ContainsKeyTrigger(BaseTrigger):
         self.required_key = required_key
 
     def execute(self, context: TriggerContextDTO) -> TriggerExecutionDTO:
-        decision = DecisionDTO.YES if hasattr(context, self.required_key) else DecisionDTO.NO
+        decision = (
+            DecisionDTO.YES
+            if getattr(context, self.required_key, None) is not None
+            else DecisionDTO.NO
+        )
         return TriggerExecutionDTO(decision=decision)
