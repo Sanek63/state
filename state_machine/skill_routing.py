@@ -237,7 +237,7 @@ class FinishTrigger(BaseTrigger):
         return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
 
 
-class SkillRoutingKey:
+class SkillRoutingKeys:
     INIT_SKILL_RUN = "init_skill_run"
     IS_TRANSFER = "is_transfer"
     CLASSIFICATION_SKILL_ID_IS_NULL = "classification_skill_id_is_null"
@@ -271,8 +271,8 @@ class SkillRoutingKey:
 def build_skill_routing_workflow(
     route_overrides: dict[str, TriggerRoutesDTO] | None = None,
 ) -> WorkflowDTO:
-    n = SkillRoutingKey
-    t = SkillRoutingKey
+    n = SkillRoutingKeys
+    t = SkillRoutingKeys
     nodes: dict[str, TriggerNodeDTO] = {
         n.INIT_SKILL_RUN: TriggerNodeDTO(
             name=n.INIT_SKILL_RUN,
@@ -445,7 +445,7 @@ def build_skill_routing_workflow(
 
 
 def build_skill_routing_trigger_factories() -> dict[str, TriggerFactory]:
-    t = SkillRoutingKey
+    t = SkillRoutingKeys
     return {
         t.INIT_SKILL_RUN: lambda: InitSkillRunTrigger(),
         t.IS_TRANSFER: lambda: IsTransferTrigger(),
