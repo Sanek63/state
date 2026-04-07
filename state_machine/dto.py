@@ -33,7 +33,9 @@ class TriggerRoutesDTO:
             return self.yes or self.default
         if decision == DecisionDTO.NO:
             return self.no or self.default
-        return self.default
+        if decision == DecisionDTO.DEFAULT:
+            return self.default
+        raise ValueError(f"Unsupported decision value: {decision}")
 
 
 @dataclass(slots=True)

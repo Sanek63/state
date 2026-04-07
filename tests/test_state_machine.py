@@ -50,6 +50,43 @@ class StateMachineTests(unittest.TestCase):
         self.assertEqual([item.node for item in yes_history], ["check", "approved"])
         self.assertEqual(workflow_machine.current_node, "approved")
 
+    def test_default_route_when_key_is_absent(self) -> None:
+        workflow = WorkflowDTO(
+            start_node="check",
+            nodes={
+                "check": TriggerNodeDTO(
+                    name="check",
+                    trigger_key="contains_key",
+                    options={"required_key": "approved"},
+                    routes=TriggerRoutesDTO(yes="approved", default="rejected"),
+                ),
+                "approved": TriggerNodeDTO(
+                    name="approved",
+                    trigger_key="always_yes",
+                    routes=TriggerRoutesDTO(),
+                ),
+                "rejected": TriggerNodeDTO(
+                    name="rejected",
+                    trigger_key="always_no",
+                    routes=TriggerRoutesDTO(),
+                ),
+            },
+        )
+        workflow_machine = StatefulWorkflow(
+            workflow=workflow,
+            trigger_factories={
+                "contains_key": lambda options: ContainsKeyTrigger(
+                    required_key=options["required_key"]
+                ),
+                "always_yes": lambda _: AlwaysYesTrigger(),
+                "always_no": lambda _: AlwaysNoTrigger(),
+            },
+        )
+
+        history = workflow_machine.run(TriggerContextDTO(payload={}))
+        self.assertEqual([item.node for item in history], ["check", "rejected"])
+        self.assertEqual(workflow_machine.current_node, "rejected")
+
     def test_dynamic_node_graph(self) -> None:
         workflow = WorkflowDTO(
             start_node="first",
