@@ -15,6 +15,8 @@ GRAPH_LAYOUT_TOP_TO_BOTTOM = "TB"
 
 
 class WorkflowGraph(Protocol):
+    """Type contract for graph objects returned by transitions graph backends."""
+
     def draw(self, filename: str | None, format: str | None = None, **kwargs: Any) -> Any: ...
 
 
@@ -92,6 +94,7 @@ class StatefulWorkflow:
         return history
 
     def get_graph(self, use_pygraphviz: bool = False) -> WorkflowGraph:
+        """Build and return a workflow graph object compatible with transitions draw API."""
         graph_engine = "graphviz" if use_pygraphviz else "mermaid"
         graph_machine = GraphMachine(
             states=list(self._workflow.nodes.keys()),
@@ -113,6 +116,7 @@ class StatefulWorkflow:
         return factory(options)
 
     def _validate_trigger_factories(self) -> None:
+        """Ensure each workflow node trigger key has a registered trigger factory."""
         used_trigger_keys = {node.trigger_key for node in self._workflow.nodes.values()}
         missing = sorted(used_trigger_keys - set(self._trigger_factories.keys()))
         if missing:
