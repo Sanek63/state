@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol
+from typing import Callable
 
 from transitions import Machine
 from transitions.extensions import GraphMachine
@@ -11,13 +11,7 @@ from .triggers import BaseTrigger
 
 
 TriggerFactory = Callable[[dict], BaseTrigger]
-GRAPH_LAYOUT_TOP_TO_BOTTOM = "TB"
-
-
-class WorkflowGraph(Protocol):
-    """Type contract for graph objects returned by transitions graph backends."""
-
-    def draw(self, filename: str | None, format: str | None = None, **kwargs: Any) -> Any: ...
+GraphTransition = tuple[str, str, str]
 
 
 @dataclass(slots=True)
@@ -42,10 +36,12 @@ class StatefulWorkflow:
         self._workflow = workflow
         self._trigger_factories = trigger_factories
         self._validate_trigger_factories()
+        self._states = list(workflow.nodes.keys())
+        self._transitions = self._build_transitions()
         self._model = WorkflowModel()
         self._machine = Machine(
             model=self._model,
-            states=list(workflow.nodes.keys()),
+            states=self._states,
             initial=workflow.start_node,
             auto_transitions=False,
         )
@@ -93,17 +89,16 @@ class StatefulWorkflow:
 
         return history
 
-    def get_graph(self, use_pygraphviz: bool = False) -> WorkflowGraph:
-        """Build and return a workflow graph object compatible with transitions draw API."""
+    def get_graph(self, use_pygraphviz: bool = False):
         graph_engine = "graphviz" if use_pygraphviz else "mermaid"
         graph_machine = GraphMachine(
-            states=list(self._workflow.nodes.keys()),
+            states=self._states,
             initial=self._workflow.start_node,
+            transitions=[list(transition) for transition in self._transitions],
             auto_transitions=False,
             graph_engine=graph_engine,
         )
-        self._register_transitions(graph_machine)
-        graph_machine.machine_attributes["rankdir"] = GRAPH_LAYOUT_TOP_TO_BOTTOM
+        graph_machine.machine_attributes["rankdir"] = "TB"
         return graph_machine.get_graph()
 
     def _build_trigger(self, trigger_key: str, options: dict) -> BaseTrigger:
@@ -116,7 +111,6 @@ class StatefulWorkflow:
         return factory(options)
 
     def _validate_trigger_factories(self) -> None:
-        """Ensure each workflow node trigger key has a registered trigger factory."""
         used_trigger_keys = {node.trigger_key for node in self._workflow.nodes.values()}
         missing = sorted(used_trigger_keys - set(self._trigger_factories.keys()))
         if missing:
@@ -125,18 +119,20 @@ class StatefulWorkflow:
             )
 
     def _register_transitions(self, machine: Machine) -> None:
+        for trigger, source, dest in self._transitions:
+            machine.add_transition(trigger=trigger, source=source, dest=dest)
+
+    def _build_transitions(self) -> tuple[GraphTransition, ...]:
+        transitions: list[GraphTransition] = []
         for node in self._workflow.nodes.values():
             destinations = {
                 route
                 for route in (node.routes.yes, node.routes.no, node.routes.default)
                 if route is not None
             }
-            for next_node in destinations:
-                machine.add_transition(
-                    trigger=self._transition_name(node.name, next_node),
-                    source=node.name,
-                    dest=next_node,
-                )
+            for next_node in sorted(destinations):
+                transitions.append((self._transition_name(node.name, next_node), node.name, next_node))
+        return tuple(transitions)
 
     @staticmethod
     def _transition_name(source: str, dest: str) -> str:
