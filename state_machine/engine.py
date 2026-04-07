@@ -89,8 +89,8 @@ class StatefulWorkflow:
         factory = self._trigger_factories.get(trigger_key)
         if not factory:
             raise KeyError(
-                f"Trigger factory not found for key '{trigger_key}'. "
-                "Callers must provide complete trigger_factories for the workflow."
+                f"Missing trigger factory for key '{trigger_key}'. "
+                "This should have been caught during workflow initialization."
             )
         return factory(options)
 
@@ -99,7 +99,7 @@ class StatefulWorkflow:
         missing = sorted(used_trigger_keys - set(self._trigger_factories.keys()))
         if missing:
             raise KeyError(
-                "Trigger factories not found for keys: " + ", ".join(f"'{key}'" for key in missing)
+                "Missing trigger factories for keys: " + ", ".join(f"'{key}'" for key in missing)
             )
 
     def _register_transitions(self) -> None:
