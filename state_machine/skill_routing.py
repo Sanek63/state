@@ -192,16 +192,8 @@ class AppendCurrentSkillTrigger(BaseTrigger):
         return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
 
 
-class AppendCurrentSkillForReserveTrigger(BaseTrigger):
-    def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
-        context.skill_json.append(
-            {
-                "id": context.skill_id,
-                "key": context.skill_id,
-                "wait_time": context.wait_time,
-            }
-        )
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+class AppendCurrentSkillForReserveTrigger(AppendCurrentSkillTrigger):
+    pass
 
 
 class ReserveSkillInSkillJsonExistsTrigger(BaseTrigger):
@@ -231,11 +223,8 @@ class ReserveSkillFoundTrigger(BaseTrigger):
         return TriggerExecutionDTO(decision=decision)
 
 
-class SetCurrentSkillToReserveTrigger(BaseTrigger):
-    def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
-        if context.smart_ivr_id_skill:
-            context.skill_id = context.smart_ivr_id_skill
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+class SetCurrentSkillToReserveTrigger(TakeReserveSkillFromSmartIvrTrigger):
+    pass
 
 
 class StubTrigger(BaseTrigger):
