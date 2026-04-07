@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Protocol
 
 from transitions import Machine
 from transitions.extensions import GraphMachine
@@ -11,6 +11,11 @@ from .triggers import BaseTrigger
 
 
 TriggerFactory = Callable[[dict], BaseTrigger]
+GRAPH_LAYOUT_TOP_TO_BOTTOM = "TB"
+
+
+class WorkflowGraph(Protocol):
+    def draw(self, filename: str | None, format: str | None = None, **kwargs: Any) -> Any: ...
 
 
 @dataclass(slots=True)
@@ -86,7 +91,7 @@ class StatefulWorkflow:
 
         return history
 
-    def get_graph(self, use_pygraphviz: bool = False) -> Any:
+    def get_graph(self, use_pygraphviz: bool = False) -> WorkflowGraph:
         graph_engine = "graphviz" if use_pygraphviz else "mermaid"
         graph_machine = GraphMachine(
             states=list(self._workflow.nodes.keys()),
@@ -95,7 +100,7 @@ class StatefulWorkflow:
             graph_engine=graph_engine,
         )
         self._register_transitions(graph_machine)
-        graph_machine.machine_attributes["rankdir"] = "TB"
+        graph_machine.machine_attributes["rankdir"] = GRAPH_LAYOUT_TOP_TO_BOTTOM
         return graph_machine.get_graph()
 
     def _build_trigger(self, trigger_key: str, options: dict) -> BaseTrigger:
