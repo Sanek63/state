@@ -91,7 +91,7 @@ class StatefulWorkflow:
         for node in self._workflow.nodes.values():
             destinations = {
                 route
-                for route in (node.routes.yes, node.routes.no)
+                for route in (node.routes.yes, node.routes.no, node.routes.default)
                 if route is not None
             }
             for next_node in destinations:

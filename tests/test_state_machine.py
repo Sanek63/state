@@ -11,7 +11,7 @@ from state_machine.triggers import AlwaysNoTrigger, AlwaysYesTrigger, ContainsKe
 
 
 class StateMachineTests(unittest.TestCase):
-    def test_yes_and_no_routing(self) -> None:
+    def test_yes_no_and_default_routing(self) -> None:
         workflow = WorkflowDTO(
             start_node="check",
             nodes={
@@ -19,7 +19,7 @@ class StateMachineTests(unittest.TestCase):
                     name="check",
                     trigger_key="contains_key",
                     options={"required_key": "approved"},
-                    routes=TriggerRoutesDTO(yes="approved", no="rejected"),
+                    routes=TriggerRoutesDTO(yes="approved", default="rejected"),
                 ),
                 "approved": TriggerNodeDTO(
                     name="approved",
@@ -51,7 +51,7 @@ class StateMachineTests(unittest.TestCase):
         self.assertEqual(yes_history[0].next_node, "approved")
         self.assertEqual(workflow_machine.current_node, "approved")
 
-    def test_no_route_when_key_is_absent(self) -> None:
+    def test_default_route_when_key_is_absent(self) -> None:
         workflow = WorkflowDTO(
             start_node="check",
             nodes={
@@ -59,7 +59,7 @@ class StateMachineTests(unittest.TestCase):
                     name="check",
                     trigger_key="contains_key",
                     options={"required_key": "approved"},
-                    routes=TriggerRoutesDTO(yes="approved", no="rejected"),
+                    routes=TriggerRoutesDTO(yes="approved", default="rejected"),
                 ),
                 "approved": TriggerNodeDTO(
                     name="approved",
