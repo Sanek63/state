@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable
 
 from transitions import Machine
@@ -10,7 +10,7 @@ from .dto import DecisionDTO, TriggerContextDTO, TriggerExecutionDTO, WorkflowDT
 from .triggers import BaseTrigger
 
 
-TriggerFactory = Callable[[dict], BaseTrigger]
+TriggerFactory = Callable[[], BaseTrigger]
 GraphTransition = tuple[str, str, str]
 
 
@@ -19,7 +19,6 @@ class WorkflowStepResultDTO:
     node: str
     decision: DecisionDTO
     next_node: str | None
-    data: dict = field(default_factory=dict)
 
 
 class WorkflowModel:
@@ -56,7 +55,7 @@ class StatefulWorkflow:
 
     def step(self, context: TriggerContextDTO) -> WorkflowStepResultDTO:
         node = self._workflow.nodes[self._model.state]
-        trigger = self._build_trigger(node.trigger_key, node.options)
+        trigger = self._build_trigger(node.trigger_key)
         execution: TriggerExecutionDTO = trigger.execute(context)
         next_node = node.routes.resolve_next(execution.decision)
 
@@ -67,7 +66,6 @@ class StatefulWorkflow:
             node=node.name,
             decision=execution.decision,
             next_node=next_node,
-            data=execution.data,
         )
 
     def run(
@@ -101,14 +99,14 @@ class StatefulWorkflow:
         graph_machine.machine_attributes["rankdir"] = "TB"
         return graph_machine.get_graph()
 
-    def _build_trigger(self, trigger_key: str, options: dict) -> BaseTrigger:
+    def _build_trigger(self, trigger_key: str) -> BaseTrigger:
         factory = self._trigger_factories.get(trigger_key)
         if not factory:
             raise KeyError(
                 f"Missing trigger factory for key '{trigger_key}'. "
                 "This should have been caught during workflow initialization."
             )
-        return factory(options)
+        return factory()
 
     def _validate_trigger_factories(self) -> None:
         used_trigger_keys = {node.trigger_key for node in self._workflow.nodes.values()}

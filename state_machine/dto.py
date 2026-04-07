@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
-
-
 class DecisionDTO(str, Enum):
     YES = "YES"
     NO = "NO"
@@ -13,13 +10,12 @@ class DecisionDTO(str, Enum):
 
 @dataclass(slots=True)
 class TriggerContextDTO:
-    payload: dict[str, Any] = field(default_factory=dict)
+    pass
 
 
 @dataclass(slots=True)
 class TriggerExecutionDTO:
     decision: DecisionDTO
-    data: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -43,7 +39,6 @@ class TriggerNodeDTO:
     name: str
     trigger_key: str
     routes: TriggerRoutesDTO = field(default_factory=TriggerRoutesDTO)
-    options: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import dataclass
 
 from state_machine.dto import (
     TriggerContextDTO,
@@ -11,6 +12,10 @@ from state_machine.triggers import AlwaysNoTrigger, AlwaysYesTrigger, ContainsKe
 
 
 class StateMachineTests(unittest.TestCase):
+    @dataclass(slots=True)
+    class _ApprovedContext(TriggerContextDTO):
+        approved: bool = False
+
     def test_can_build_workflow_graph(self) -> None:
         workflow = WorkflowDTO(
             start_node="first",
@@ -30,8 +35,8 @@ class StateMachineTests(unittest.TestCase):
         workflow_machine = StatefulWorkflow(
             workflow=workflow,
             trigger_factories={
-                "always_yes": lambda _: AlwaysYesTrigger(),
-                "always_no": lambda _: AlwaysNoTrigger(),
+                "always_yes": lambda: AlwaysYesTrigger(),
+                "always_no": lambda: AlwaysNoTrigger(),
             },
         )
 
@@ -49,7 +54,6 @@ class StateMachineTests(unittest.TestCase):
                 "check": TriggerNodeDTO(
                     name="check",
                     trigger_key="contains_key",
-                    options={"required_key": "approved"},
                     routes=TriggerRoutesDTO(yes="approved", default="rejected"),
                 ),
                 "approved": TriggerNodeDTO(
@@ -67,16 +71,14 @@ class StateMachineTests(unittest.TestCase):
         workflow_machine = StatefulWorkflow(
             workflow=workflow,
             trigger_factories={
-                "contains_key": lambda options: ContainsKeyTrigger(
-                    required_key=options["required_key"]
-                ),
-                "always_yes": lambda _: AlwaysYesTrigger(),
-                "always_no": lambda _: AlwaysNoTrigger(),
+                "contains_key": lambda: ContainsKeyTrigger(required_key="approved"),
+                "always_yes": lambda: AlwaysYesTrigger(),
+                "always_no": lambda: AlwaysNoTrigger(),
             },
         )
 
         yes_history = workflow_machine.run(
-            TriggerContextDTO(payload={"approved": True}),
+            self._ApprovedContext(approved=True),
         )
         self.assertEqual([item.node for item in yes_history], ["check", "approved"])
         self.assertEqual(yes_history[0].next_node, "approved")
@@ -89,7 +91,6 @@ class StateMachineTests(unittest.TestCase):
                 "check": TriggerNodeDTO(
                     name="check",
                     trigger_key="contains_key",
-                    options={"required_key": "approved"},
                     routes=TriggerRoutesDTO(yes="approved", default="rejected"),
                 ),
                 "approved": TriggerNodeDTO(
@@ -107,15 +108,13 @@ class StateMachineTests(unittest.TestCase):
         workflow_machine = StatefulWorkflow(
             workflow=workflow,
             trigger_factories={
-                "contains_key": lambda options: ContainsKeyTrigger(
-                    required_key=options["required_key"]
-                ),
-                "always_yes": lambda _: AlwaysYesTrigger(),
-                "always_no": lambda _: AlwaysNoTrigger(),
+                "contains_key": lambda: ContainsKeyTrigger(required_key="approved"),
+                "always_yes": lambda: AlwaysYesTrigger(),
+                "always_no": lambda: AlwaysNoTrigger(),
             },
         )
 
-        history = workflow_machine.run(TriggerContextDTO(payload={}))
+        history = workflow_machine.run(TriggerContextDTO())
         self.assertEqual([item.node for item in history], ["check", "rejected"])
         self.assertEqual(history[0].next_node, "rejected")
         self.assertEqual(workflow_machine.current_node, "rejected")
@@ -144,8 +143,8 @@ class StateMachineTests(unittest.TestCase):
         workflow_machine = StatefulWorkflow(
             workflow=workflow,
             trigger_factories={
-                "always_yes": lambda _: AlwaysYesTrigger(),
-                "always_no": lambda _: AlwaysNoTrigger(),
+                "always_yes": lambda: AlwaysYesTrigger(),
+                "always_no": lambda: AlwaysNoTrigger(),
             },
         )
 
