@@ -48,6 +48,7 @@ class StateMachineTests(unittest.TestCase):
             TriggerContextDTO(payload={"approved": True}),
         )
         self.assertEqual([item.node for item in yes_history], ["check", "approved"])
+        self.assertEqual(yes_history[0].next_node, "approved")
         self.assertEqual(workflow_machine.current_node, "approved")
 
     def test_default_route_when_key_is_absent(self) -> None:
@@ -85,6 +86,7 @@ class StateMachineTests(unittest.TestCase):
 
         history = workflow_machine.run(TriggerContextDTO(payload={}))
         self.assertEqual([item.node for item in history], ["check", "rejected"])
+        self.assertEqual(history[0].next_node, "rejected")
         self.assertEqual(workflow_machine.current_node, "rejected")
 
     def test_dynamic_node_graph(self) -> None:

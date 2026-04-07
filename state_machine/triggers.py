@@ -8,7 +8,7 @@ from .dto import DecisionDTO, TriggerContextDTO, TriggerExecutionDTO
 class BaseTrigger(ABC):
     @abstractmethod
     def execute(self, context: TriggerContextDTO) -> TriggerExecutionDTO:
-        raise NotImplementedError
+        pass
 
 
 class AlwaysYesTrigger(BaseTrigger):

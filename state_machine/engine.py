@@ -89,13 +89,12 @@ class StatefulWorkflow:
 
     def _register_transitions(self) -> None:
         for node in self._workflow.nodes.values():
-            for next_node in {
-                node.routes.yes,
-                node.routes.no,
-                node.routes.default,
-            }:
-                if next_node is None:
-                    continue
+            destinations = {
+                route
+                for route in (node.routes.yes, node.routes.no, node.routes.default)
+                if route is not None
+            }
+            for next_node in destinations:
                 self._machine.add_transition(
                     trigger=self._transition_name(node.name, next_node),
                     source=node.name,
