@@ -125,12 +125,12 @@ class StatefulWorkflow:
     def _build_transitions(self) -> tuple[GraphTransition, ...]:
         transitions: list[GraphTransition] = []
         for node in self._workflow.nodes.values():
-            destinations = {
+            ordered_destinations = dict.fromkeys(
                 route
                 for route in (node.routes.yes, node.routes.no, node.routes.default)
                 if route is not None
-            }
-            for next_node in sorted(destinations):
+            )
+            for next_node in ordered_destinations:
                 transitions.append((self._transition_name(node.name, next_node), node.name, next_node))
         return tuple(transitions)
 
