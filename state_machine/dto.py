@@ -10,7 +10,11 @@ class DecisionDTO(str, Enum):
 
 @dataclass(slots=True)
 class TriggerContextDTO:
-    """Base context DTO for workflow execution; extend with concrete context fields."""
+    """Marker base for workflow contexts.
+
+    The engine expects a shared base type for all context DTOs,
+    while concrete workflows define their own strongly-typed fields via subclassing.
+    """
 
     pass
 

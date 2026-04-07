@@ -238,6 +238,8 @@ class FinishTrigger(BaseTrigger):
 
 
 class SkillRoutingKeys:
+    """Shared constants for both workflow node names and trigger registry keys."""
+
     INIT_SKILL_RUN = "init_skill_run"
     IS_TRANSFER = "is_transfer"
     CLASSIFICATION_SKILL_ID_IS_NULL = "classification_skill_id_is_null"
