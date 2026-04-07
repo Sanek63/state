@@ -8,7 +8,6 @@ from typing import Any
 class DecisionDTO(str, Enum):
     YES = "YES"
     NO = "NO"
-    DEFAULT = "DEFAULT"
 
 
 @dataclass(slots=True)
@@ -26,15 +25,12 @@ class TriggerExecutionDTO:
 class TriggerRoutesDTO:
     yes: str | None = None
     no: str | None = None
-    default: str | None = None
 
     def resolve_next(self, decision: DecisionDTO) -> str | None:
         if decision == DecisionDTO.YES:
-            return self.yes or self.default
+            return self.yes
         if decision == DecisionDTO.NO:
-            return self.no or self.default
-        if decision == DecisionDTO.DEFAULT:
-            return self.default
+            return self.no
         raise ValueError(f"Unsupported decision value: {decision}")
 
 
@@ -60,7 +56,7 @@ class WorkflowDTO:
                 raise ValueError(
                     f"Node key '{node_name}' must match TriggerNodeDTO.name '{node.name}'"
                 )
-            for next_node in (node.routes.yes, node.routes.no, node.routes.default):
+            for next_node in (node.routes.yes, node.routes.no):
                 if next_node is not None and next_node not in self.nodes:
                     raise ValueError(
                         f"Node '{node_name}' points to unknown next node '{next_node}'"
