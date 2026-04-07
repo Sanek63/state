@@ -4,12 +4,14 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 from transitions import Machine
+from transitions.extensions import GraphMachine
 
 from .dto import DecisionDTO, TriggerContextDTO, TriggerExecutionDTO, WorkflowDTO
 from .triggers import BaseTrigger
 
 
 TriggerFactory = Callable[[dict], BaseTrigger]
+GraphTransition = tuple[str, str, str]
 
 
 @dataclass(slots=True)
@@ -33,18 +35,24 @@ class StatefulWorkflow:
         workflow.validate()
         self._workflow = workflow
         self._trigger_factories = trigger_factories
+        self._validate_trigger_factories()
+        self._states = list(workflow.nodes.keys())
+        self._transitions = self._build_transitions()
         self._model = WorkflowModel()
         self._machine = Machine(
             model=self._model,
-            states=list(workflow.nodes.keys()),
+            states=self._states,
             initial=workflow.start_node,
             auto_transitions=False,
         )
-        self._register_transitions()
+        self._register_transitions(self._machine)
 
     @property
     def current_node(self) -> str:
         return self._model.state
+
+    def reset(self) -> None:
+        self._model.state = self._workflow.start_node
 
     def step(self, context: TriggerContextDTO) -> WorkflowStepResultDTO:
         node = self._workflow.nodes[self._model.state]
@@ -81,25 +89,50 @@ class StatefulWorkflow:
 
         return history
 
+    def get_graph(self, use_pygraphviz: bool = False):
+        graph_engine = "graphviz" if use_pygraphviz else "mermaid"
+        graph_machine = GraphMachine(
+            states=self._states,
+            initial=self._workflow.start_node,
+            transitions=[list(transition) for transition in self._transitions],
+            auto_transitions=False,
+            graph_engine=graph_engine,
+        )
+        graph_machine.machine_attributes["rankdir"] = "TB"
+        return graph_machine.get_graph()
+
     def _build_trigger(self, trigger_key: str, options: dict) -> BaseTrigger:
         factory = self._trigger_factories.get(trigger_key)
         if not factory:
-            raise KeyError(f"Trigger factory not found for key '{trigger_key}'")
+            raise KeyError(
+                f"Missing trigger factory for key '{trigger_key}'. "
+                "This should have been caught during workflow initialization."
+            )
         return factory(options)
 
-    def _register_transitions(self) -> None:
+    def _validate_trigger_factories(self) -> None:
+        used_trigger_keys = {node.trigger_key for node in self._workflow.nodes.values()}
+        missing = sorted(used_trigger_keys - set(self._trigger_factories.keys()))
+        if missing:
+            raise KeyError(
+                "Missing trigger factories for keys: " + ", ".join(f"'{key}'" for key in missing)
+            )
+
+    def _register_transitions(self, machine: Machine) -> None:
+        for trigger, source, dest in self._transitions:
+            machine.add_transition(trigger=trigger, source=source, dest=dest)
+
+    def _build_transitions(self) -> tuple[GraphTransition, ...]:
+        transitions: list[GraphTransition] = []
         for node in self._workflow.nodes.values():
-            destinations = {
+            ordered_unique_destinations = dict.fromkeys(
                 route
                 for route in (node.routes.yes, node.routes.no, node.routes.default)
                 if route is not None
-            }
-            for next_node in destinations:
-                self._machine.add_transition(
-                    trigger=self._transition_name(node.name, next_node),
-                    source=node.name,
-                    dest=next_node,
-                )
+            )
+            for next_node in ordered_unique_destinations:
+                transitions.append((self._transition_name(node.name, next_node), node.name, next_node))
+        return tuple(transitions)
 
     @staticmethod
     def _transition_name(source: str, dest: str) -> str:
