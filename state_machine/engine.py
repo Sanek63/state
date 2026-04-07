@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 from transitions import Machine
+from transitions.extensions import GraphMachine
 
 from .dto import DecisionDTO, TriggerContextDTO, TriggerExecutionDTO, WorkflowDTO
 from .triggers import BaseTrigger
@@ -41,7 +42,7 @@ class StatefulWorkflow:
             initial=workflow.start_node,
             auto_transitions=False,
         )
-        self._register_transitions()
+        self._register_transitions(self._machine)
 
     @property
     def current_node(self) -> str:
@@ -85,6 +86,18 @@ class StatefulWorkflow:
 
         return history
 
+    def get_graph(self, use_pygraphviz: bool = False) -> Any:
+        graph_engine = "graphviz" if use_pygraphviz else "mermaid"
+        graph_machine = GraphMachine(
+            states=list(self._workflow.nodes.keys()),
+            initial=self._workflow.start_node,
+            auto_transitions=False,
+            graph_engine=graph_engine,
+        )
+        self._register_transitions(graph_machine)
+        graph_machine.machine_attributes["rankdir"] = "TB"
+        return graph_machine.get_graph()
+
     def _build_trigger(self, trigger_key: str, options: dict) -> BaseTrigger:
         factory = self._trigger_factories.get(trigger_key)
         if not factory:
@@ -102,7 +115,7 @@ class StatefulWorkflow:
                 "Missing trigger factories for keys: " + ", ".join(f"'{key}'" for key in missing)
             )
 
-    def _register_transitions(self) -> None:
+    def _register_transitions(self, machine: Machine) -> None:
         for node in self._workflow.nodes.values():
             destinations = {
                 route
@@ -110,7 +123,7 @@ class StatefulWorkflow:
                 if route is not None
             }
             for next_node in destinations:
-                self._machine.add_transition(
+                machine.add_transition(
                     trigger=self._transition_name(node.name, next_node),
                     source=node.name,
                     dest=next_node,

@@ -11,6 +11,37 @@ from state_machine.triggers import AlwaysNoTrigger, AlwaysYesTrigger, ContainsKe
 
 
 class StateMachineTests(unittest.TestCase):
+    def test_can_build_workflow_graph(self) -> None:
+        workflow = WorkflowDTO(
+            start_node="first",
+            nodes={
+                "first": TriggerNodeDTO(
+                    name="first",
+                    trigger_key="always_yes",
+                    routes=TriggerRoutesDTO(yes="second"),
+                ),
+                "second": TriggerNodeDTO(
+                    name="second",
+                    trigger_key="always_no",
+                    routes=TriggerRoutesDTO(),
+                ),
+            },
+        )
+        workflow_machine = StatefulWorkflow(
+            workflow=workflow,
+            trigger_factories={
+                "always_yes": lambda _: AlwaysYesTrigger(),
+                "always_no": lambda _: AlwaysNoTrigger(),
+            },
+        )
+
+        graph = workflow_machine.get_graph(use_pygraphviz=False)
+
+        self.assertIn("state \"first\" as first", graph.source)
+        self.assertIn("state \"second\" as second", graph.source)
+        self.assertIn("first --> second: go__first__second", graph.source)
+        self.assertIn("direction TB", graph.source)
+
     def test_yes_no_and_default_routing(self) -> None:
         workflow = WorkflowDTO(
             start_node="check",
