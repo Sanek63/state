@@ -237,7 +237,9 @@ class FinishTrigger(BaseTrigger):
         return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
 
 
-class SkillRoutingNodeKey:
+class SkillRoutingKeys:
+    """Shared constants for both workflow node names and trigger registry keys."""
+
     INIT_SKILL_RUN = "init_skill_run"
     IS_TRANSFER = "is_transfer"
     CLASSIFICATION_SKILL_ID_IS_NULL = "classification_skill_id_is_null"
@@ -268,45 +270,11 @@ class SkillRoutingNodeKey:
     APPEND_CURRENT_SKILL = "append_current_skill"
     FINISH = "finish"
     FINISH_NO_RESERVE = "finish_no_reserve"
-
-
-class SkillRoutingTriggerKey:
-    INIT_SKILL_RUN = "init_skill_run"
-    IS_TRANSFER = "is_transfer"
-    CLASSIFICATION_SKILL_ID_IS_NULL = "classification_skill_id_is_null"
-    RESOLVE_SKILL_FROM_ROUTE_DEFAULT = "resolve_skill_from_route_default"
-    IS_TWORK_DATA_SKILL_ID_NULL = "is_twork_data_skill_id_null"
-    RESOLVE_RETRANSFER_SKILL = "resolve_retransfer_skill"
-    APPEND_RETRANSFER_SKILL = "append_retransfer_skill"
-    IS_TRANSFER_AFTER_TWORK = "is_transfer_after_twork"
-    RESOLVE_TRANSFER_SKILL = "resolve_transfer_skill"
-    APPEND_TRANSFER_SKILL = "append_transfer_skill"
-    GET_SKILL_SETTINGS = "get_skill_settings"
-    SKILL_SETTINGS_RECEIVED = "skill_settings_received"
-    HAS_NUMERIC_IDENTIFIER = "has_numeric_identifier"
-    SKILL_ACTIVE = "skill_active"
-    IS_TRANSFER_FORBIDDEN = "is_transfer_forbidden"
-    WORKTIME_ENABLED = "worktime_enabled"
-    WORKTIME_RANGE_SINGLE_VALUE = "worktime_range_single_value"
-    IS_NOW_WORKTIME = "is_now_worktime"
-    HAS_RESERVE_SKILL = "has_reserve_skill"
-    APPEND_CURRENT_SKILL_FOR_RESERVE = "append_current_skill_for_reserve"
-    RESERVE_SKILL_IN_SKILL_JSON_EXISTS = "reserve_skill_in_skill_json_exists"
-    INCREMENT_WITH_RESERVE_TIMEOUT = "increment_with_reserve_timeout"
-    TAKE_RESERVE_SKILL_FROM_SMART_IVR = "take_reserve_skill_from_smart_ivr"
-    RESERVE_SKILL_FOUND = "reserve_skill_found"
-    SET_CURRENT_SKILL_TO_RESERVE = "set_current_skill_to_reserve"
-    STUB = "stub"
-    CURRENT_SKILL_NUM_IS_ZERO = "current_skill_num_is_zero"
-    APPEND_CURRENT_SKILL = "append_current_skill"
-    FINISH = "finish"
-
-
 def build_skill_routing_workflow(
     route_overrides: dict[str, TriggerRoutesDTO] | None = None,
 ) -> WorkflowDTO:
-    n = SkillRoutingNodeKey
-    t = SkillRoutingTriggerKey
+    n = SkillRoutingKeys
+    t = SkillRoutingKeys
     nodes: dict[str, TriggerNodeDTO] = {
         n.INIT_SKILL_RUN: TriggerNodeDTO(
             name=n.INIT_SKILL_RUN,
@@ -479,37 +447,37 @@ def build_skill_routing_workflow(
 
 
 def build_skill_routing_trigger_factories() -> dict[str, TriggerFactory]:
-    t = SkillRoutingTriggerKey
+    t = SkillRoutingKeys
     return {
-        t.INIT_SKILL_RUN: lambda _: InitSkillRunTrigger(),
-        t.IS_TRANSFER: lambda _: IsTransferTrigger(),
-        t.CLASSIFICATION_SKILL_ID_IS_NULL: lambda _: IsClassificationSkillIdNullTrigger(),
-        t.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: lambda _: ResolveSkillFromRouteDefaultTrigger(),
-        t.IS_TWORK_DATA_SKILL_ID_NULL: lambda _: IsTworkDataSkillIdNullTrigger(),
-        t.RESOLVE_RETRANSFER_SKILL: lambda _: ResolveRetransferSkillTrigger(),
-        t.APPEND_RETRANSFER_SKILL: lambda _: AppendRetransferSkillTrigger(),
-        t.IS_TRANSFER_AFTER_TWORK: lambda _: IsTransferAfterTworkTrigger(),
-        t.RESOLVE_TRANSFER_SKILL: lambda _: ResolveTransferSkillTrigger(),
-        t.APPEND_TRANSFER_SKILL: lambda _: AppendTransferSkillTrigger(),
-        t.GET_SKILL_SETTINGS: lambda _: GetSkillSettingsTrigger(),
-        t.SKILL_SETTINGS_RECEIVED: lambda _: SkillSettingsReceivedTrigger(),
-        t.HAS_NUMERIC_IDENTIFIER: lambda _: HasNumericIdentifierTrigger(),
-        t.SKILL_ACTIVE: lambda _: IsSkillActiveTrigger(),
-        t.IS_TRANSFER_FORBIDDEN: lambda _: IsTransferForbiddenTrigger(),
-        t.WORKTIME_ENABLED: lambda _: IsWorktimeEnabledTrigger(),
-        t.WORKTIME_RANGE_SINGLE_VALUE: lambda _: IsWorktimeRangeSingleValueTrigger(),
-        t.IS_NOW_WORKTIME: lambda _: IsNowWorktimeTrigger(),
-        t.HAS_RESERVE_SKILL: lambda _: HasReserveSkillTrigger(),
-        t.APPEND_CURRENT_SKILL_FOR_RESERVE: lambda _: AppendCurrentSkillForReserveTrigger(),
-        t.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: lambda _: ReserveSkillInSkillJsonExistsTrigger(),
-        t.INCREMENT_WITH_RESERVE_TIMEOUT: lambda _: IncrementWithReserveTimeoutTrigger(),
-        t.TAKE_RESERVE_SKILL_FROM_SMART_IVR: lambda _: TakeReserveSkillFromSmartIvrTrigger(),
-        t.RESERVE_SKILL_FOUND: lambda _: ReserveSkillFoundTrigger(),
-        t.SET_CURRENT_SKILL_TO_RESERVE: lambda _: SetCurrentSkillToReserveTrigger(),
-        t.STUB: lambda _: StubTrigger(),
-        t.CURRENT_SKILL_NUM_IS_ZERO: lambda _: CurrentSkillNumIsZeroTrigger(),
-        t.APPEND_CURRENT_SKILL: lambda _: AppendCurrentSkillTrigger(),
-        t.FINISH: lambda _: FinishTrigger(),
+        t.INIT_SKILL_RUN: lambda: InitSkillRunTrigger(),
+        t.IS_TRANSFER: lambda: IsTransferTrigger(),
+        t.CLASSIFICATION_SKILL_ID_IS_NULL: lambda: IsClassificationSkillIdNullTrigger(),
+        t.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: lambda: ResolveSkillFromRouteDefaultTrigger(),
+        t.IS_TWORK_DATA_SKILL_ID_NULL: lambda: IsTworkDataSkillIdNullTrigger(),
+        t.RESOLVE_RETRANSFER_SKILL: lambda: ResolveRetransferSkillTrigger(),
+        t.APPEND_RETRANSFER_SKILL: lambda: AppendRetransferSkillTrigger(),
+        t.IS_TRANSFER_AFTER_TWORK: lambda: IsTransferAfterTworkTrigger(),
+        t.RESOLVE_TRANSFER_SKILL: lambda: ResolveTransferSkillTrigger(),
+        t.APPEND_TRANSFER_SKILL: lambda: AppendTransferSkillTrigger(),
+        t.GET_SKILL_SETTINGS: lambda: GetSkillSettingsTrigger(),
+        t.SKILL_SETTINGS_RECEIVED: lambda: SkillSettingsReceivedTrigger(),
+        t.HAS_NUMERIC_IDENTIFIER: lambda: HasNumericIdentifierTrigger(),
+        t.SKILL_ACTIVE: lambda: IsSkillActiveTrigger(),
+        t.IS_TRANSFER_FORBIDDEN: lambda: IsTransferForbiddenTrigger(),
+        t.WORKTIME_ENABLED: lambda: IsWorktimeEnabledTrigger(),
+        t.WORKTIME_RANGE_SINGLE_VALUE: lambda: IsWorktimeRangeSingleValueTrigger(),
+        t.IS_NOW_WORKTIME: lambda: IsNowWorktimeTrigger(),
+        t.HAS_RESERVE_SKILL: lambda: HasReserveSkillTrigger(),
+        t.APPEND_CURRENT_SKILL_FOR_RESERVE: lambda: AppendCurrentSkillForReserveTrigger(),
+        t.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: lambda: ReserveSkillInSkillJsonExistsTrigger(),
+        t.INCREMENT_WITH_RESERVE_TIMEOUT: lambda: IncrementWithReserveTimeoutTrigger(),
+        t.TAKE_RESERVE_SKILL_FROM_SMART_IVR: lambda: TakeReserveSkillFromSmartIvrTrigger(),
+        t.RESERVE_SKILL_FOUND: lambda: ReserveSkillFoundTrigger(),
+        t.SET_CURRENT_SKILL_TO_RESERVE: lambda: SetCurrentSkillToReserveTrigger(),
+        t.STUB: lambda: StubTrigger(),
+        t.CURRENT_SKILL_NUM_IS_ZERO: lambda: CurrentSkillNumIsZeroTrigger(),
+        t.APPEND_CURRENT_SKILL: lambda: AppendCurrentSkillTrigger(),
+        t.FINISH: lambda: FinishTrigger(),
     }
 
 
