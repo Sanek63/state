@@ -50,7 +50,7 @@ class InitSkillRunTrigger(BaseTrigger):
         context.skill_json = []
         context.skill_num = 0
         context.wait_time = 0
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class IsTransferTrigger(BaseTrigger):
@@ -68,7 +68,7 @@ class IsClassificationSkillIdNullTrigger(BaseTrigger):
 class ResolveSkillFromRouteDefaultTrigger(BaseTrigger):
     def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
         context.skill_id = context.route_default_skill_mapping
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class IsTworkDataSkillIdNullTrigger(BaseTrigger):
@@ -80,7 +80,7 @@ class IsTworkDataSkillIdNullTrigger(BaseTrigger):
 class ResolveRetransferSkillTrigger(BaseTrigger):
     def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
         context.skill_id = context.retransfer_default_skill_id
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class IsTransferAfterTworkTrigger(BaseTrigger):
@@ -92,7 +92,7 @@ class IsTransferAfterTworkTrigger(BaseTrigger):
 class ResolveTransferSkillTrigger(BaseTrigger):
     def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
         context.skill_id = context.transfer_default_skill_id
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class AppendRetransferSkillTrigger(BaseTrigger):
@@ -104,7 +104,7 @@ class AppendRetransferSkillTrigger(BaseTrigger):
                 "wait_time": 0,
             }
         )
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class AppendTransferSkillTrigger(BaseTrigger):
@@ -116,14 +116,14 @@ class AppendTransferSkillTrigger(BaseTrigger):
                 "wait_time": 0,
             }
         )
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class GetSkillSettingsTrigger(BaseTrigger):
     def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
         if context.skill_id is None:
             context.skill_id = context.classification_skill_id
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class SkillSettingsReceivedTrigger(BaseTrigger):
@@ -189,7 +189,7 @@ class AppendCurrentSkillTrigger(BaseTrigger):
                 "wait_time": context.wait_time,
             }
         )
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class AppendCurrentSkillForReserveTrigger(AppendCurrentSkillTrigger):
@@ -208,13 +208,13 @@ class IncrementWithReserveTimeoutTrigger(BaseTrigger):
     def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
         context.skill_num += 1
         context.wait_time = context.reserve_skill_timeout
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class TakeReserveSkillFromSmartIvrTrigger(BaseTrigger):
     def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
         context.skill_id = context.smart_ivr_id_skill
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class ReserveSkillFoundTrigger(BaseTrigger):
@@ -229,12 +229,12 @@ class SetCurrentSkillToReserveTrigger(TakeReserveSkillFromSmartIvrTrigger):
 
 class StubTrigger(BaseTrigger):
     def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class FinishTrigger(BaseTrigger):
     def execute(self, context: SkillRoutingContextDTO) -> TriggerExecutionDTO:
-        return TriggerExecutionDTO(decision=DecisionDTO.DEFAULT)
+        return TriggerExecutionDTO(decision=DecisionDTO.YES)
 
 
 class SkillRoutingKeys:
@@ -279,7 +279,7 @@ def build_skill_routing_workflow(
         n.INIT_SKILL_RUN: TriggerNodeDTO(
             name=n.INIT_SKILL_RUN,
             trigger_key=t.INIT_SKILL_RUN,
-            routes=TriggerRoutesDTO(default=n.IS_TRANSFER),
+            routes=TriggerRoutesDTO(yes=n.IS_TRANSFER),
         ),
         n.IS_TRANSFER: TriggerNodeDTO(
             name=n.IS_TRANSFER,
@@ -300,7 +300,7 @@ def build_skill_routing_workflow(
         n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: TriggerNodeDTO(
             name=n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT,
             trigger_key=t.RESOLVE_SKILL_FROM_ROUTE_DEFAULT,
-            routes=TriggerRoutesDTO(default=n.GET_SKILL_SETTINGS),
+            routes=TriggerRoutesDTO(yes=n.GET_SKILL_SETTINGS),
         ),
         n.IS_TWORK_DATA_SKILL_ID_NULL: TriggerNodeDTO(
             name=n.IS_TWORK_DATA_SKILL_ID_NULL,
@@ -313,12 +313,12 @@ def build_skill_routing_workflow(
         n.RESOLVE_RETRANSFER_SKILL: TriggerNodeDTO(
             name=n.RESOLVE_RETRANSFER_SKILL,
             trigger_key=t.RESOLVE_RETRANSFER_SKILL,
-            routes=TriggerRoutesDTO(default=n.APPEND_RETRANSFER_SKILL),
+            routes=TriggerRoutesDTO(yes=n.APPEND_RETRANSFER_SKILL),
         ),
         n.APPEND_RETRANSFER_SKILL: TriggerNodeDTO(
             name=n.APPEND_RETRANSFER_SKILL,
             trigger_key=t.APPEND_RETRANSFER_SKILL,
-            routes=TriggerRoutesDTO(default=n.FINISH),
+            routes=TriggerRoutesDTO(yes=n.FINISH),
         ),
         n.IS_TRANSFER_AFTER_TWORK: TriggerNodeDTO(
             name=n.IS_TRANSFER_AFTER_TWORK,
@@ -328,17 +328,17 @@ def build_skill_routing_workflow(
         n.RESOLVE_TRANSFER_SKILL: TriggerNodeDTO(
             name=n.RESOLVE_TRANSFER_SKILL,
             trigger_key=t.RESOLVE_TRANSFER_SKILL,
-            routes=TriggerRoutesDTO(default=n.APPEND_TRANSFER_SKILL),
+            routes=TriggerRoutesDTO(yes=n.APPEND_TRANSFER_SKILL),
         ),
         n.APPEND_TRANSFER_SKILL: TriggerNodeDTO(
             name=n.APPEND_TRANSFER_SKILL,
             trigger_key=t.APPEND_TRANSFER_SKILL,
-            routes=TriggerRoutesDTO(default=n.FINISH),
+            routes=TriggerRoutesDTO(yes=n.FINISH),
         ),
         n.GET_SKILL_SETTINGS: TriggerNodeDTO(
             name=n.GET_SKILL_SETTINGS,
             trigger_key=t.GET_SKILL_SETTINGS,
-            routes=TriggerRoutesDTO(default=n.SKILL_SETTINGS_RECEIVED),
+            routes=TriggerRoutesDTO(yes=n.SKILL_SETTINGS_RECEIVED),
         ),
         n.SKILL_SETTINGS_RECEIVED: TriggerNodeDTO(
             name=n.SKILL_SETTINGS_RECEIVED,
@@ -383,7 +383,7 @@ def build_skill_routing_workflow(
         n.APPEND_CURRENT_SKILL_FOR_RESERVE: TriggerNodeDTO(
             name=n.APPEND_CURRENT_SKILL_FOR_RESERVE,
             trigger_key=t.APPEND_CURRENT_SKILL_FOR_RESERVE,
-            routes=TriggerRoutesDTO(default=n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS),
+            routes=TriggerRoutesDTO(yes=n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS),
         ),
         n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: TriggerNodeDTO(
             name=n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS,
@@ -393,12 +393,12 @@ def build_skill_routing_workflow(
         n.INCREMENT_WITH_RESERVE_TIMEOUT: TriggerNodeDTO(
             name=n.INCREMENT_WITH_RESERVE_TIMEOUT,
             trigger_key=t.INCREMENT_WITH_RESERVE_TIMEOUT,
-            routes=TriggerRoutesDTO(default=n.TAKE_RESERVE_SKILL_FROM_SMART_IVR),
+            routes=TriggerRoutesDTO(yes=n.TAKE_RESERVE_SKILL_FROM_SMART_IVR),
         ),
         n.TAKE_RESERVE_SKILL_FROM_SMART_IVR: TriggerNodeDTO(
             name=n.TAKE_RESERVE_SKILL_FROM_SMART_IVR,
             trigger_key=t.TAKE_RESERVE_SKILL_FROM_SMART_IVR,
-            routes=TriggerRoutesDTO(default=n.RESERVE_SKILL_FOUND),
+            routes=TriggerRoutesDTO(yes=n.RESERVE_SKILL_FOUND),
         ),
         n.RESERVE_SKILL_FOUND: TriggerNodeDTO(
             name=n.RESERVE_SKILL_FOUND,
@@ -408,12 +408,12 @@ def build_skill_routing_workflow(
         n.SET_CURRENT_SKILL_TO_RESERVE: TriggerNodeDTO(
             name=n.SET_CURRENT_SKILL_TO_RESERVE,
             trigger_key=t.SET_CURRENT_SKILL_TO_RESERVE,
-            routes=TriggerRoutesDTO(default=n.APPEND_CURRENT_SKILL),
+            routes=TriggerRoutesDTO(yes=n.APPEND_CURRENT_SKILL),
         ),
         n.STUB: TriggerNodeDTO(
             name=n.STUB,
             trigger_key=t.STUB,
-            routes=TriggerRoutesDTO(default=n.CURRENT_SKILL_NUM_IS_ZERO),
+            routes=TriggerRoutesDTO(yes=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
         n.CURRENT_SKILL_NUM_IS_ZERO: TriggerNodeDTO(
             name=n.CURRENT_SKILL_NUM_IS_ZERO,
@@ -423,7 +423,7 @@ def build_skill_routing_workflow(
         n.APPEND_CURRENT_SKILL: TriggerNodeDTO(
             name=n.APPEND_CURRENT_SKILL,
             trigger_key=t.APPEND_CURRENT_SKILL,
-            routes=TriggerRoutesDTO(default=n.FINISH),
+            routes=TriggerRoutesDTO(yes=n.FINISH),
         ),
         n.FINISH: TriggerNodeDTO(
             name=n.FINISH,

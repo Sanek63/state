@@ -125,7 +125,7 @@ class StatefulWorkflow:
         for node in self._workflow.nodes.values():
             ordered_unique_destinations = dict.fromkeys(
                 route
-                for route in (node.routes.yes, node.routes.no, node.routes.default)
+                for route in (node.routes.yes, node.routes.no)
                 if route is not None
             )
             for next_node in ordered_unique_destinations:

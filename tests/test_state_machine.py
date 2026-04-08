@@ -47,14 +47,14 @@ class StateMachineTests(unittest.TestCase):
         self.assertIn("first --> second: go__first__second", graph.source)
         self.assertIn("direction TB", graph.source)
 
-    def test_yes_no_and_default_routing(self) -> None:
+    def test_yes_no_routing(self) -> None:
         workflow = WorkflowDTO(
             start_node="check",
             nodes={
                 "check": TriggerNodeDTO(
                     name="check",
                     trigger_key="contains_key",
-                    routes=TriggerRoutesDTO(yes="approved", default="rejected"),
+                    routes=TriggerRoutesDTO(yes="approved", no="rejected"),
                 ),
                 "approved": TriggerNodeDTO(
                     name="approved",
@@ -84,14 +84,14 @@ class StateMachineTests(unittest.TestCase):
         self.assertEqual(yes_history[0].next_node, "approved")
         self.assertEqual(workflow_machine.current_node, "approved")
 
-    def test_default_route_when_key_is_absent(self) -> None:
+    def test_no_route_when_key_is_absent(self) -> None:
         workflow = WorkflowDTO(
             start_node="check",
             nodes={
                 "check": TriggerNodeDTO(
                     name="check",
                     trigger_key="contains_key",
-                    routes=TriggerRoutesDTO(yes="approved", default="rejected"),
+                    routes=TriggerRoutesDTO(yes="approved", no="rejected"),
                 ),
                 "approved": TriggerNodeDTO(
                     name="approved",
