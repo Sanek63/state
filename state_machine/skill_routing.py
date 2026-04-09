@@ -449,7 +449,7 @@ def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
             routes=TriggerRoutesDTO(),
         ),
         n.FINISH_NO_RESERVE: SkillRoutingNodeConfig(
-            trigger_key=n.FINISH_NO_RESERVE,
+            trigger_key=n.FINISH,
             trigger_factory=lambda: FinishTrigger(),
             routes=TriggerRoutesDTO(),
         ),
@@ -506,6 +506,7 @@ def _validate_terminal_states(workflow: WorkflowDTO, terminal_states: frozenset[
 class SkillRoutingStateMachineFactory:
     def __init__(self, route_overrides: dict[str, TriggerRoutesDTO] | None = None) -> None:
         self._route_overrides = route_overrides
+        self._config: SkillRoutingMachineConfig | None = None
 
     def create(self) -> StatefulWorkflow:
         config = self._build_config()
@@ -523,6 +524,9 @@ class SkillRoutingStateMachineFactory:
         return self._build_trigger_factories(config)
 
     def _build_config(self) -> SkillRoutingMachineConfig:
+        if self._config is not None:
+            return self._config
+
         node_configs = _build_skill_routing_node_configs()
         if self._route_overrides:
             for node_name, routes in self._route_overrides.items():
@@ -534,11 +538,12 @@ class SkillRoutingStateMachineFactory:
                     trigger_factory=config.trigger_factory,
                     routes=routes,
                 )
-        return SkillRoutingMachineConfig(
+        self._config = SkillRoutingMachineConfig(
             initial_state=SkillRoutingKeys.INIT_SKILL_RUN,
             terminal_states=SKILL_ROUTING_TERMINAL_STATES,
             node_configs=node_configs,
         )
+        return self._config
 
     @staticmethod
     def _build_workflow(config: SkillRoutingMachineConfig) -> WorkflowDTO:
