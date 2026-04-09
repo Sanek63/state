@@ -303,7 +303,7 @@ def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
     ) -> SkillRoutingNodeConfig:
         return SkillRoutingNodeConfig(
             trigger_key=trigger_key,
-            trigger_factory=lambda trigger_cls=trigger_cls: trigger_cls(),
+            trigger_factory=lambda: trigger_cls(),
             trigger_name=trigger_cls.name,
             trigger_doc=trigger_cls.doc,
             routes=routes,
