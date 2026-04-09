@@ -458,32 +458,32 @@ def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
 
 def _validate_no_skill_routing_cycles(workflow: WorkflowDTO) -> None:
     visited: set[str] = set()
-    in_stack: set[str] = set()
+    recursion_stack: set[str] = set()
     path: list[str] = []
 
     def walk(node_name: str) -> None:
-        if node_name in in_stack:
+        if node_name in recursion_stack:
             cycle_start = path.index(node_name)
             cycle_path = " -> ".join(path[cycle_start:] + [node_name])
             raise ValueError(f"Detected cycle in skill routing workflow: {cycle_path}")
         if node_name in visited:
             return
 
-        in_stack.add(node_name)
+        recursion_stack.add(node_name)
         path.append(node_name)
         node = workflow.nodes[node_name]
-        next_nodes = tuple(
-            dict.fromkeys(
-                route
-                for route in (node.routes.yes, node.routes.no, node.routes.default)
-                if route is not None
-            )
-        )
+        next_nodes: list[str] = []
+        seen_next_nodes: set[str] = set()
+        for route in (node.routes.yes, node.routes.no, node.routes.default):
+            if route is None or route in seen_next_nodes:
+                continue
+            seen_next_nodes.add(route)
+            next_nodes.append(route)
         for next_node in next_nodes:
             walk(next_node)
 
         path.pop()
-        in_stack.remove(node_name)
+        recursion_stack.remove(node_name)
         visited.add(node_name)
 
     walk(workflow.start_node)
@@ -506,7 +506,6 @@ def _validate_terminal_states(workflow: WorkflowDTO, terminal_states: frozenset[
 class SkillRoutingStateMachineFactory:
     def __init__(self, route_overrides: dict[str, TriggerRoutesDTO] | None = None) -> None:
         self._route_overrides = route_overrides
-        self._config: SkillRoutingMachineConfig | None = None
 
     def create(self) -> StatefulWorkflow:
         config = self._build_config()
@@ -524,9 +523,6 @@ class SkillRoutingStateMachineFactory:
         return self._build_trigger_factories(config)
 
     def _build_config(self) -> SkillRoutingMachineConfig:
-        if self._config is not None:
-            return self._config
-
         node_configs = _build_skill_routing_node_configs()
         if self._route_overrides:
             for node_name, routes in self._route_overrides.items():
@@ -538,12 +534,11 @@ class SkillRoutingStateMachineFactory:
                     trigger_factory=config.trigger_factory,
                     routes=routes,
                 )
-        self._config = SkillRoutingMachineConfig(
+        return SkillRoutingMachineConfig(
             initial_state=SkillRoutingKeys.INIT_SKILL_RUN,
             terminal_states=SKILL_ROUTING_TERMINAL_STATES,
             node_configs=node_configs,
         )
-        return self._config
 
     @staticmethod
     def _build_workflow(config: SkillRoutingMachineConfig) -> WorkflowDTO:
