@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, ClassVar, Protocol
 
 from .dto import (
     DecisionDTO,
@@ -13,6 +13,13 @@ from .dto import (
 )
 from .engine import StatefulWorkflow, TriggerFactory
 from .triggers import BaseTrigger
+
+
+class TriggerClassProtocol(Protocol):
+    name: ClassVar[str]
+    doc: ClassVar[str]
+
+    def __call__(self) -> BaseTrigger: ...
 
 
 @dataclass(slots=True)
@@ -281,6 +288,7 @@ SKILL_ROUTING_TERMINAL_STATES = frozenset(
 class SkillRoutingNodeConfig:
     trigger_key: str
     trigger_factory: TriggerFactory
+    trigger_cls: type[TriggerClassProtocol] | None = None
     routes: TriggerRoutesDTO = field(default_factory=TriggerRoutesDTO)
 
 
@@ -291,9 +299,45 @@ class SkillRoutingMachineConfig:
     node_configs: dict[str, SkillRoutingNodeConfig]
 
 
-def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
+def _build_skill_routing_trigger_mapping() -> dict[str, type[TriggerClassProtocol]]:
     n = SkillRoutingKeys
     return {
+        n.INIT_SKILL_RUN: InitSkillRunTrigger,
+        n.IS_TRANSFER: IsTransferTrigger,
+        n.CLASSIFICATION_SKILL_ID_IS_NULL: IsClassificationSkillIdNullTrigger,
+        n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: ResolveSkillFromRouteDefaultTrigger,
+        n.IS_TWORK_DATA_SKILL_ID_NULL: IsTworkDataSkillIdNullTrigger,
+        n.RESOLVE_RETRANSFER_SKILL: ResolveRetransferSkillTrigger,
+        n.APPEND_RETRANSFER_SKILL: AppendRetransferSkillTrigger,
+        n.IS_TRANSFER_AFTER_TWORK: IsTransferAfterTworkTrigger,
+        n.RESOLVE_TRANSFER_SKILL: ResolveTransferSkillTrigger,
+        n.APPEND_TRANSFER_SKILL: AppendTransferSkillTrigger,
+        n.GET_SKILL_SETTINGS: GetSkillSettingsTrigger,
+        n.SKILL_SETTINGS_RECEIVED: SkillSettingsReceivedTrigger,
+        n.HAS_NUMERIC_IDENTIFIER: HasNumericIdentifierTrigger,
+        n.SKILL_ACTIVE: IsSkillActiveTrigger,
+        n.IS_TRANSFER_FORBIDDEN: IsTransferForbiddenTrigger,
+        n.WORKTIME_ENABLED: IsWorktimeEnabledTrigger,
+        n.WORKTIME_RANGE_SINGLE_VALUE: IsWorktimeRangeSingleValueTrigger,
+        n.IS_NOW_WORKTIME: IsNowWorktimeTrigger,
+        n.HAS_RESERVE_SKILL: HasReserveSkillTrigger,
+        n.APPEND_CURRENT_SKILL_FOR_RESERVE: AppendCurrentSkillForReserveTrigger,
+        n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: ReserveSkillInSkillJsonExistsTrigger,
+        n.INCREMENT_WITH_RESERVE_TIMEOUT: IncrementWithReserveTimeoutTrigger,
+        n.TAKE_RESERVE_SKILL_FROM_SMART_IVR: TakeReserveSkillFromSmartIvrTrigger,
+        n.RESERVE_SKILL_FOUND: ReserveSkillFoundTrigger,
+        n.SET_CURRENT_SKILL_TO_RESERVE: SetCurrentSkillToReserveTrigger,
+        n.STUB: StubTrigger,
+        n.CURRENT_SKILL_NUM_IS_ZERO: CurrentSkillNumIsZeroTrigger,
+        n.APPEND_CURRENT_SKILL: AppendCurrentSkillTrigger,
+        n.FINISH: FinishTrigger,
+        n.FINISH_NO_RESERVE: FinishTrigger,
+    }
+
+
+def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
+    n = SkillRoutingKeys
+    node_configs = {
         n.INIT_SKILL_RUN: SkillRoutingNodeConfig(
             trigger_key=n.INIT_SKILL_RUN,
             trigger_factory=lambda: InitSkillRunTrigger(),
@@ -454,6 +498,16 @@ def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
             routes=TriggerRoutesDTO(),
         ),
     }
+    trigger_mapping = _build_skill_routing_trigger_mapping()
+    for state, trigger_cls in trigger_mapping.items():
+        config = node_configs[state]
+        node_configs[state] = SkillRoutingNodeConfig(
+            trigger_key=config.trigger_key,
+            trigger_factory=config.trigger_factory,
+            trigger_cls=trigger_cls,
+            routes=config.routes,
+        )
+    return node_configs
 
 
 def _validate_no_skill_routing_cycles(workflow: WorkflowDTO) -> None:
@@ -532,6 +586,7 @@ class SkillRoutingStateMachineFactory:
                 node_configs[node_name] = SkillRoutingNodeConfig(
                     trigger_key=config.trigger_key,
                     trigger_factory=config.trigger_factory,
+                    trigger_cls=config.trigger_cls,
                     routes=routes,
                 )
         return SkillRoutingMachineConfig(
@@ -546,6 +601,8 @@ class SkillRoutingStateMachineFactory:
             node_name: TriggerNodeDTO(
                 name=node_name,
                 trigger_key=node_config.trigger_key,
+                trigger_name=node_config.trigger_cls.name if node_config.trigger_cls else None,
+                trigger_doc=node_config.trigger_cls.doc if node_config.trigger_cls else None,
                 routes=node_config.routes,
             )
             for node_name, node_config in config.node_configs.items()

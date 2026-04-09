@@ -23,11 +23,15 @@ class StateMachineTests(unittest.TestCase):
                 "first": TriggerNodeDTO(
                     name="first",
                     trigger_key="always_yes",
+                    trigger_name="Always YES",
+                    trigger_doc="Always returns YES decision.",
                     routes=TriggerRoutesDTO(yes="second"),
                 ),
                 "second": TriggerNodeDTO(
                     name="second",
                     trigger_key="always_no",
+                    trigger_name="Always NO",
+                    trigger_doc="Always returns NO decision.",
                     routes=TriggerRoutesDTO(),
                 ),
             },
@@ -42,8 +46,14 @@ class StateMachineTests(unittest.TestCase):
 
         graph = workflow_machine.get_graph(use_pygraphviz=False)
 
-        self.assertIn("state \"first\" as first", graph.source)
-        self.assertIn("state \"second\" as second", graph.source)
+        self.assertIn(
+            "state \"Always YES<br/>Always returns YES decision.\" as first",
+            graph.source,
+        )
+        self.assertIn(
+            "state \"Always NO<br/>Always returns NO decision.\" as second",
+            graph.source,
+        )
         self.assertIn("first --> second: go__first__second", graph.source)
         self.assertIn("direction TB", graph.source)
 

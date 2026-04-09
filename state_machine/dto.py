@@ -44,6 +44,8 @@ class TriggerRoutesDTO:
 class TriggerNodeDTO:
     name: str
     trigger_key: str
+    trigger_name: str | None = None
+    trigger_doc: str | None = None
     routes: TriggerRoutesDTO = field(default_factory=TriggerRoutesDTO)
 
 
