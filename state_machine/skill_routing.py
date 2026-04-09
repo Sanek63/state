@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import partial
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -555,7 +556,7 @@ class SkillRoutingStateMachineFactory:
     def create(self) -> MachineState:
         config = self._build_config()
         trigger_types = self._build_registered_trigger_types(config)
-        container = self._build_trigger_container(config)
+        container = self._build_trigger_container(trigger_types)
         state_machine = StatefulWorkflow(
             workflow=self._build_workflow(config),
             trigger_factories=self._build_trigger_factories(
@@ -572,7 +573,7 @@ class SkillRoutingStateMachineFactory:
     def create_trigger_factories(self) -> dict[str, TriggerFactory]:
         config = self._build_config()
         trigger_types = self._build_registered_trigger_types(config)
-        container = self._build_trigger_container(config)
+        container = self._build_trigger_container(trigger_types)
         return self._build_trigger_factories(
             container=container,
             trigger_types=trigger_types,
@@ -615,8 +616,7 @@ class SkillRoutingStateMachineFactory:
         _validate_no_skill_routing_cycles(workflow)
         return workflow
 
-    def _build_trigger_container(self, config: SkillRoutingMachineConfig) -> Container:
-        trigger_types = self._build_registered_trigger_types(config)
+    def _build_trigger_container(self, trigger_types: dict[str, type[BaseTrigger]]) -> Container:
         container = Container()
         for trigger_type in trigger_types.values():
             container.register(trigger_type, trigger_type)
@@ -643,7 +643,7 @@ class SkillRoutingStateMachineFactory:
         trigger_types: dict[str, type[BaseTrigger]],
     ) -> dict[str, TriggerFactory]:
         return {
-            trigger_key: (lambda trigger_type=trigger_type: container.resolve(trigger_type))
+            trigger_key: partial(container.resolve, trigger_type)
             for trigger_key, trigger_type in trigger_types.items()
         }
 
