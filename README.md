@@ -22,8 +22,9 @@
 - `state_machine/skill_routing.py`  
   Прикладная схема роутинга скиллов:
   - `SkillRoutingContextDTO` — контекст доменной логики,
+  - `MachineState` — обертка над `StatefulWorkflow` для запуска и получения результата,
   - `build_skill_routing_workflow()` — декларативное описание графа узлов,
-  - `build_skill_routing_trigger_factories()` — привязка ключей узлов к триггерам,
+  - `build_skill_routing_trigger_factories()` — DI-регистрация триггеров через `punq`,
   - `build_skill_routing_state_machine()` — сборка готовой машины состояний.
 
 - `tests/test_state_machine.py`  

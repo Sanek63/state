@@ -2,6 +2,7 @@ import unittest
 
 from state_machine.skill_routing import (
     IsTransferTrigger,
+    MachineState,
     SkillRoutingContextDTO,
     SkillRoutingKeys,
     SkillRoutingStateMachineFactory,
@@ -14,7 +15,16 @@ from state_machine.dto import TriggerRoutesDTO
 class SkillRoutingSchemeTests(unittest.TestCase):
     def test_factory_create_builds_machine(self) -> None:
         machine = SkillRoutingStateMachineFactory().create()
+        self.assertIsInstance(machine, MachineState)
         self.assertEqual(machine.current_node, SkillRoutingKeys.INIT_SKILL_RUN)
+
+    def test_factory_trigger_factories_resolve_from_di(self) -> None:
+        trigger_factories = SkillRoutingStateMachineFactory().create_trigger_factories()
+        first = trigger_factories[SkillRoutingKeys.IS_TRANSFER]()
+        second = trigger_factories[SkillRoutingKeys.IS_TRANSFER]()
+        self.assertIsInstance(first, IsTransferTrigger)
+        self.assertIsInstance(second, IsTransferTrigger)
+        self.assertIsNot(first, second)
 
     def test_skill_routing_workflow_has_no_cycles(self) -> None:
         workflow = build_skill_routing_workflow()
@@ -40,23 +50,25 @@ class SkillRoutingSchemeTests(unittest.TestCase):
 
     def test_transfer_path_with_route_default_skill(self) -> None:
         machine = build_skill_routing_state_machine()
-        context = SkillRoutingContextDTO(
-            is_transfer=True,
-            classification_skill_id=None,
-            route_default_skill_mapping="route-default-skill",
-            skill_settings_received=True,
-            numeric_identifier_present=True,
-            skill_active=True,
-            transfer_allowed=False,
-            worktime_enabled=True,
-            worktime_range_single_value=True,
-        )
+        context = {
+            "is_transfer": True,
+            "classification_skill_id": None,
+            "route_default_skill_mapping": "route-default-skill",
+            "skill_settings_received": True,
+            "numeric_identifier_present": True,
+            "skill_active": True,
+            "transfer_allowed": False,
+            "worktime_enabled": True,
+            "worktime_range_single_value": True,
+        }
 
-        history = machine.run(context)
+        context_result = machine.run_and_get_result(context)
+        final_decision = machine.run_and_get_decision(context_result)
 
-        self.assertEqual(history[-1].node, "finish")
-        self.assertEqual(context.skill_json[-1]["id"], "route-default-skill")
-        self.assertEqual(context.skill_json[-1]["wait_time"], 0)
+        self.assertEqual(machine.current_node, "finish")
+        self.assertEqual(final_decision.value, "DEFAULT")
+        self.assertEqual(context_result.skill_json[-1]["id"], "route-default-skill")
+        self.assertEqual(context_result.skill_json[-1]["wait_time"], 0)
 
     def test_retransfer_fallback_path(self) -> None:
         machine = build_skill_routing_state_machine()
