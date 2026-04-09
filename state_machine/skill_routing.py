@@ -618,7 +618,10 @@ class SkillRoutingStateMachineFactory:
     def _build_trigger_container(self, trigger_types: dict[str, type[BaseTrigger]]) -> Container:
         container = Container()
         for trigger_type in trigger_types.values():
-            container.register(trigger_type, factory=trigger_type)
+            container.register(
+                trigger_type,
+                factory=lambda trigger_type=trigger_type: trigger_type(),
+            )
         return container
 
     @staticmethod
@@ -642,9 +645,22 @@ class SkillRoutingStateMachineFactory:
         trigger_types: dict[str, type[BaseTrigger]],
     ) -> dict[str, TriggerFactory]:
         return {
-            trigger_key: (lambda trigger_type=trigger_type: container.resolve(trigger_type))
+            trigger_key: SkillRoutingStateMachineFactory._build_trigger_factory(
+                container=container,
+                trigger_type=trigger_type,
+            )
             for trigger_key, trigger_type in trigger_types.items()
         }
+
+    @staticmethod
+    def _build_trigger_factory(
+        container: Container,
+        trigger_type: type[BaseTrigger],
+    ) -> TriggerFactory:
+        def factory() -> BaseTrigger:
+            return container.resolve(trigger_type)
+
+        return factory
 
 
 def build_skill_routing_workflow(
