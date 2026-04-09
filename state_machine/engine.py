@@ -97,7 +97,21 @@ class StatefulWorkflow:
             graph_engine=graph_engine,
         )
         graph_machine.machine_attributes["rankdir"] = "TB"
-        return graph_machine.get_graph()
+        graph = graph_machine.get_graph()
+        state_labels = {
+            node.name: self._build_state_graph_label(node.name, use_pygraphviz=use_pygraphviz)
+            for node in self._workflow.nodes.values()
+        }
+        if use_pygraphviz:
+            for state, label in state_labels.items():
+                graph.get_node(state).attr["label"] = label
+            return graph
+
+        source = graph.source
+        for state, label in state_labels.items():
+            source = source.replace(f'state "{state}" as {state}', f'state "{label}" as {state}')
+        graph.source = source
+        return graph
 
     def _build_trigger(self, trigger_key: str) -> BaseTrigger:
         factory = self._trigger_factories.get(trigger_key)
@@ -135,3 +149,12 @@ class StatefulWorkflow:
     @staticmethod
     def _transition_name(source: str, dest: str) -> str:
         return f"go__{source}__{dest}"
+
+    def _build_state_graph_label(self, node_name: str, use_pygraphviz: bool) -> str:
+        node = self._workflow.nodes[node_name]
+        title = (node.trigger_name or node.name).strip()
+        doc = (node.trigger_doc or "").strip()
+        if not doc:
+            return title
+        separator = "\n" if use_pygraphviz else "<br/>"
+        return f"{title}{separator}{doc}"

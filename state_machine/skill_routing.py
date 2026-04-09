@@ -281,6 +281,8 @@ SKILL_ROUTING_TERMINAL_STATES = frozenset(
 class SkillRoutingNodeConfig:
     trigger_key: str
     trigger_factory: TriggerFactory
+    trigger_name: str | None = None
+    trigger_doc: str | None = None
     routes: TriggerRoutesDTO = field(default_factory=TriggerRoutesDTO)
 
 
@@ -293,164 +295,178 @@ class SkillRoutingMachineConfig:
 
 def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
     n = SkillRoutingKeys
+
+    def node_config(
+        trigger_key: str,
+        trigger_cls: type[BaseTrigger],
+        routes: TriggerRoutesDTO,
+    ) -> SkillRoutingNodeConfig:
+        return SkillRoutingNodeConfig(
+            trigger_key=trigger_key,
+            trigger_factory=lambda: trigger_cls(),
+            trigger_name=trigger_cls.name,
+            trigger_doc=trigger_cls.doc,
+            routes=routes,
+        )
+
     return {
-        n.INIT_SKILL_RUN: SkillRoutingNodeConfig(
+        n.INIT_SKILL_RUN: node_config(
             trigger_key=n.INIT_SKILL_RUN,
-            trigger_factory=lambda: InitSkillRunTrigger(),
+            trigger_cls=InitSkillRunTrigger,
             routes=TriggerRoutesDTO(default=n.IS_TRANSFER),
         ),
-        n.IS_TRANSFER: SkillRoutingNodeConfig(
+        n.IS_TRANSFER: node_config(
             trigger_key=n.IS_TRANSFER,
-            trigger_factory=lambda: IsTransferTrigger(),
+            trigger_cls=IsTransferTrigger,
             routes=TriggerRoutesDTO(
                 yes=n.CLASSIFICATION_SKILL_ID_IS_NULL,
                 no=n.IS_TWORK_DATA_SKILL_ID_NULL,
             ),
         ),
-        n.CLASSIFICATION_SKILL_ID_IS_NULL: SkillRoutingNodeConfig(
+        n.CLASSIFICATION_SKILL_ID_IS_NULL: node_config(
             trigger_key=n.CLASSIFICATION_SKILL_ID_IS_NULL,
-            trigger_factory=lambda: IsClassificationSkillIdNullTrigger(),
+            trigger_cls=IsClassificationSkillIdNullTrigger,
             routes=TriggerRoutesDTO(
                 yes=n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT,
                 no=n.GET_SKILL_SETTINGS,
             ),
         ),
-        n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: SkillRoutingNodeConfig(
+        n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: node_config(
             trigger_key=n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT,
-            trigger_factory=lambda: ResolveSkillFromRouteDefaultTrigger(),
+            trigger_cls=ResolveSkillFromRouteDefaultTrigger,
             routes=TriggerRoutesDTO(default=n.GET_SKILL_SETTINGS),
         ),
-        n.IS_TWORK_DATA_SKILL_ID_NULL: SkillRoutingNodeConfig(
+        n.IS_TWORK_DATA_SKILL_ID_NULL: node_config(
             trigger_key=n.IS_TWORK_DATA_SKILL_ID_NULL,
-            trigger_factory=lambda: IsTworkDataSkillIdNullTrigger(),
+            trigger_cls=IsTworkDataSkillIdNullTrigger,
             routes=TriggerRoutesDTO(
                 yes=n.RESOLVE_RETRANSFER_SKILL,
                 no=n.IS_TRANSFER_AFTER_TWORK,
             ),
         ),
-        n.RESOLVE_RETRANSFER_SKILL: SkillRoutingNodeConfig(
+        n.RESOLVE_RETRANSFER_SKILL: node_config(
             trigger_key=n.RESOLVE_RETRANSFER_SKILL,
-            trigger_factory=lambda: ResolveRetransferSkillTrigger(),
+            trigger_cls=ResolveRetransferSkillTrigger,
             routes=TriggerRoutesDTO(default=n.APPEND_RETRANSFER_SKILL),
         ),
-        n.APPEND_RETRANSFER_SKILL: SkillRoutingNodeConfig(
+        n.APPEND_RETRANSFER_SKILL: node_config(
             trigger_key=n.APPEND_RETRANSFER_SKILL,
-            trigger_factory=lambda: AppendRetransferSkillTrigger(),
+            trigger_cls=AppendRetransferSkillTrigger,
             routes=TriggerRoutesDTO(default=n.FINISH),
         ),
-        n.IS_TRANSFER_AFTER_TWORK: SkillRoutingNodeConfig(
+        n.IS_TRANSFER_AFTER_TWORK: node_config(
             trigger_key=n.IS_TRANSFER_AFTER_TWORK,
-            trigger_factory=lambda: IsTransferAfterTworkTrigger(),
+            trigger_cls=IsTransferAfterTworkTrigger,
             routes=TriggerRoutesDTO(yes=n.RESOLVE_TRANSFER_SKILL, no=n.GET_SKILL_SETTINGS),
         ),
-        n.RESOLVE_TRANSFER_SKILL: SkillRoutingNodeConfig(
+        n.RESOLVE_TRANSFER_SKILL: node_config(
             trigger_key=n.RESOLVE_TRANSFER_SKILL,
-            trigger_factory=lambda: ResolveTransferSkillTrigger(),
+            trigger_cls=ResolveTransferSkillTrigger,
             routes=TriggerRoutesDTO(default=n.APPEND_TRANSFER_SKILL),
         ),
-        n.APPEND_TRANSFER_SKILL: SkillRoutingNodeConfig(
+        n.APPEND_TRANSFER_SKILL: node_config(
             trigger_key=n.APPEND_TRANSFER_SKILL,
-            trigger_factory=lambda: AppendTransferSkillTrigger(),
+            trigger_cls=AppendTransferSkillTrigger,
             routes=TriggerRoutesDTO(default=n.FINISH),
         ),
-        n.GET_SKILL_SETTINGS: SkillRoutingNodeConfig(
+        n.GET_SKILL_SETTINGS: node_config(
             trigger_key=n.GET_SKILL_SETTINGS,
-            trigger_factory=lambda: GetSkillSettingsTrigger(),
+            trigger_cls=GetSkillSettingsTrigger,
             routes=TriggerRoutesDTO(default=n.SKILL_SETTINGS_RECEIVED),
         ),
-        n.SKILL_SETTINGS_RECEIVED: SkillRoutingNodeConfig(
+        n.SKILL_SETTINGS_RECEIVED: node_config(
             trigger_key=n.SKILL_SETTINGS_RECEIVED,
-            trigger_factory=lambda: SkillSettingsReceivedTrigger(),
+            trigger_cls=SkillSettingsReceivedTrigger,
             routes=TriggerRoutesDTO(yes=n.HAS_NUMERIC_IDENTIFIER, no=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.HAS_NUMERIC_IDENTIFIER: SkillRoutingNodeConfig(
+        n.HAS_NUMERIC_IDENTIFIER: node_config(
             trigger_key=n.HAS_NUMERIC_IDENTIFIER,
-            trigger_factory=lambda: HasNumericIdentifierTrigger(),
+            trigger_cls=HasNumericIdentifierTrigger,
             routes=TriggerRoutesDTO(yes=n.SKILL_ACTIVE, no=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.SKILL_ACTIVE: SkillRoutingNodeConfig(
+        n.SKILL_ACTIVE: node_config(
             trigger_key=n.SKILL_ACTIVE,
-            trigger_factory=lambda: IsSkillActiveTrigger(),
+            trigger_cls=IsSkillActiveTrigger,
             routes=TriggerRoutesDTO(yes=n.IS_TRANSFER_FORBIDDEN, no=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.IS_TRANSFER_FORBIDDEN: SkillRoutingNodeConfig(
+        n.IS_TRANSFER_FORBIDDEN: node_config(
             trigger_key=n.IS_TRANSFER_FORBIDDEN,
-            trigger_factory=lambda: IsTransferForbiddenTrigger(),
+            trigger_cls=IsTransferForbiddenTrigger,
             routes=TriggerRoutesDTO(yes=n.WORKTIME_ENABLED, no=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.WORKTIME_ENABLED: SkillRoutingNodeConfig(
+        n.WORKTIME_ENABLED: node_config(
             trigger_key=n.WORKTIME_ENABLED,
-            trigger_factory=lambda: IsWorktimeEnabledTrigger(),
+            trigger_cls=IsWorktimeEnabledTrigger,
             routes=TriggerRoutesDTO(yes=n.WORKTIME_RANGE_SINGLE_VALUE, no=n.APPEND_CURRENT_SKILL),
         ),
-        n.WORKTIME_RANGE_SINGLE_VALUE: SkillRoutingNodeConfig(
+        n.WORKTIME_RANGE_SINGLE_VALUE: node_config(
             trigger_key=n.WORKTIME_RANGE_SINGLE_VALUE,
-            trigger_factory=lambda: IsWorktimeRangeSingleValueTrigger(),
+            trigger_cls=IsWorktimeRangeSingleValueTrigger,
             routes=TriggerRoutesDTO(yes=n.APPEND_CURRENT_SKILL, no=n.IS_NOW_WORKTIME),
         ),
-        n.IS_NOW_WORKTIME: SkillRoutingNodeConfig(
+        n.IS_NOW_WORKTIME: node_config(
             trigger_key=n.IS_NOW_WORKTIME,
-            trigger_factory=lambda: IsNowWorktimeTrigger(),
+            trigger_cls=IsNowWorktimeTrigger,
             routes=TriggerRoutesDTO(yes=n.APPEND_CURRENT_SKILL, no=n.HAS_RESERVE_SKILL),
         ),
-        n.HAS_RESERVE_SKILL: SkillRoutingNodeConfig(
+        n.HAS_RESERVE_SKILL: node_config(
             trigger_key=n.HAS_RESERVE_SKILL,
-            trigger_factory=lambda: HasReserveSkillTrigger(),
+            trigger_cls=HasReserveSkillTrigger,
             routes=TriggerRoutesDTO(yes=n.APPEND_CURRENT_SKILL_FOR_RESERVE, no=n.STUB),
         ),
-        n.APPEND_CURRENT_SKILL_FOR_RESERVE: SkillRoutingNodeConfig(
+        n.APPEND_CURRENT_SKILL_FOR_RESERVE: node_config(
             trigger_key=n.APPEND_CURRENT_SKILL_FOR_RESERVE,
-            trigger_factory=lambda: AppendCurrentSkillForReserveTrigger(),
+            trigger_cls=AppendCurrentSkillForReserveTrigger,
             routes=TriggerRoutesDTO(default=n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS),
         ),
-        n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: SkillRoutingNodeConfig(
+        n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: node_config(
             trigger_key=n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS,
-            trigger_factory=lambda: ReserveSkillInSkillJsonExistsTrigger(),
+            trigger_cls=ReserveSkillInSkillJsonExistsTrigger,
             routes=TriggerRoutesDTO(yes=n.INCREMENT_WITH_RESERVE_TIMEOUT, no=n.FINISH_NO_RESERVE),
         ),
-        n.INCREMENT_WITH_RESERVE_TIMEOUT: SkillRoutingNodeConfig(
+        n.INCREMENT_WITH_RESERVE_TIMEOUT: node_config(
             trigger_key=n.INCREMENT_WITH_RESERVE_TIMEOUT,
-            trigger_factory=lambda: IncrementWithReserveTimeoutTrigger(),
+            trigger_cls=IncrementWithReserveTimeoutTrigger,
             routes=TriggerRoutesDTO(default=n.TAKE_RESERVE_SKILL_FROM_SMART_IVR),
         ),
-        n.TAKE_RESERVE_SKILL_FROM_SMART_IVR: SkillRoutingNodeConfig(
+        n.TAKE_RESERVE_SKILL_FROM_SMART_IVR: node_config(
             trigger_key=n.TAKE_RESERVE_SKILL_FROM_SMART_IVR,
-            trigger_factory=lambda: TakeReserveSkillFromSmartIvrTrigger(),
+            trigger_cls=TakeReserveSkillFromSmartIvrTrigger,
             routes=TriggerRoutesDTO(default=n.RESERVE_SKILL_FOUND),
         ),
-        n.RESERVE_SKILL_FOUND: SkillRoutingNodeConfig(
+        n.RESERVE_SKILL_FOUND: node_config(
             trigger_key=n.RESERVE_SKILL_FOUND,
-            trigger_factory=lambda: ReserveSkillFoundTrigger(),
+            trigger_cls=ReserveSkillFoundTrigger,
             routes=TriggerRoutesDTO(yes=n.SET_CURRENT_SKILL_TO_RESERVE, no=n.FINISH_NO_RESERVE),
         ),
-        n.SET_CURRENT_SKILL_TO_RESERVE: SkillRoutingNodeConfig(
+        n.SET_CURRENT_SKILL_TO_RESERVE: node_config(
             trigger_key=n.SET_CURRENT_SKILL_TO_RESERVE,
-            trigger_factory=lambda: SetCurrentSkillToReserveTrigger(),
+            trigger_cls=SetCurrentSkillToReserveTrigger,
             routes=TriggerRoutesDTO(default=n.APPEND_CURRENT_SKILL),
         ),
-        n.STUB: SkillRoutingNodeConfig(
+        n.STUB: node_config(
             trigger_key=n.STUB,
-            trigger_factory=lambda: StubTrigger(),
+            trigger_cls=StubTrigger,
             routes=TriggerRoutesDTO(default=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.CURRENT_SKILL_NUM_IS_ZERO: SkillRoutingNodeConfig(
+        n.CURRENT_SKILL_NUM_IS_ZERO: node_config(
             trigger_key=n.CURRENT_SKILL_NUM_IS_ZERO,
-            trigger_factory=lambda: CurrentSkillNumIsZeroTrigger(),
+            trigger_cls=CurrentSkillNumIsZeroTrigger,
             routes=TriggerRoutesDTO(yes=n.APPEND_CURRENT_SKILL, no=n.FINISH_NO_RESERVE),
         ),
-        n.APPEND_CURRENT_SKILL: SkillRoutingNodeConfig(
+        n.APPEND_CURRENT_SKILL: node_config(
             trigger_key=n.APPEND_CURRENT_SKILL,
-            trigger_factory=lambda: AppendCurrentSkillTrigger(),
+            trigger_cls=AppendCurrentSkillTrigger,
             routes=TriggerRoutesDTO(default=n.FINISH),
         ),
-        n.FINISH: SkillRoutingNodeConfig(
+        n.FINISH: node_config(
             trigger_key=n.FINISH,
-            trigger_factory=lambda: FinishTrigger(),
+            trigger_cls=FinishTrigger,
             routes=TriggerRoutesDTO(),
         ),
-        n.FINISH_NO_RESERVE: SkillRoutingNodeConfig(
+        n.FINISH_NO_RESERVE: node_config(
             trigger_key=n.FINISH,
-            trigger_factory=lambda: FinishTrigger(),
+            trigger_cls=FinishTrigger,
             routes=TriggerRoutesDTO(),
         ),
     }
@@ -532,6 +548,8 @@ class SkillRoutingStateMachineFactory:
                 node_configs[node_name] = SkillRoutingNodeConfig(
                     trigger_key=config.trigger_key,
                     trigger_factory=config.trigger_factory,
+                    trigger_name=config.trigger_name,
+                    trigger_doc=config.trigger_doc,
                     routes=routes,
                 )
         return SkillRoutingMachineConfig(
@@ -546,6 +564,8 @@ class SkillRoutingStateMachineFactory:
             node_name: TriggerNodeDTO(
                 name=node_name,
                 trigger_key=node_config.trigger_key,
+                trigger_name=node_config.trigger_name,
+                trigger_doc=node_config.trigger_doc,
                 routes=node_config.routes,
             )
             for node_name, node_config in config.node_configs.items()

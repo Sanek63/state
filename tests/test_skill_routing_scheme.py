@@ -1,6 +1,7 @@
 import unittest
 
 from state_machine.skill_routing import (
+    IsTransferTrigger,
     SkillRoutingContextDTO,
     SkillRoutingKeys,
     SkillRoutingStateMachineFactory,
@@ -18,6 +19,14 @@ class SkillRoutingSchemeTests(unittest.TestCase):
     def test_skill_routing_workflow_has_no_cycles(self) -> None:
         workflow = build_skill_routing_workflow()
         self.assertEqual(workflow.start_node, SkillRoutingKeys.INIT_SKILL_RUN)
+        self.assertEqual(
+            workflow.nodes[SkillRoutingKeys.IS_TRANSFER].trigger_name,
+            IsTransferTrigger.name,
+        )
+        self.assertEqual(
+            workflow.nodes[SkillRoutingKeys.IS_TRANSFER].trigger_doc,
+            IsTransferTrigger.doc,
+        )
 
     def test_cycle_in_route_override_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "Detected cycle in skill routing workflow"):
