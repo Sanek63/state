@@ -9,6 +9,7 @@ from .dto import (
 from .engine import StatefulWorkflow
 from .skill_routing import (
     SkillRoutingContextDTO,
+    SkillRoutingStateMachineFactory,
     build_skill_routing_state_machine,
     build_skill_routing_trigger_factories,
     build_skill_routing_workflow,
@@ -27,6 +28,7 @@ __all__ = [
     "ContainsKeyTrigger",
     "DecisionDTO",
     "SkillRoutingContextDTO",
+    "SkillRoutingStateMachineFactory",
     "StatefulWorkflow",
     "TriggerContextDTO",
     "TriggerExecutionDTO",

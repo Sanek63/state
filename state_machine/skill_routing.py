@@ -270,222 +270,312 @@ class SkillRoutingKeys:
     APPEND_CURRENT_SKILL = "append_current_skill"
     FINISH = "finish"
     FINISH_NO_RESERVE = "finish_no_reserve"
-def build_skill_routing_workflow(
-    route_overrides: dict[str, TriggerRoutesDTO] | None = None,
-) -> WorkflowDTO:
+
+
+SKILL_ROUTING_TERMINAL_STATES = frozenset(
+    {SkillRoutingKeys.FINISH, SkillRoutingKeys.FINISH_NO_RESERVE}
+)
+
+
+@dataclass(frozen=True, slots=True)
+class SkillRoutingNodeConfig:
+    trigger_key: str
+    trigger_factory: TriggerFactory
+    routes: TriggerRoutesDTO = field(default_factory=TriggerRoutesDTO)
+
+
+@dataclass(frozen=True, slots=True)
+class SkillRoutingMachineConfig:
+    initial_state: str
+    terminal_states: frozenset[str]
+    node_configs: dict[str, SkillRoutingNodeConfig]
+
+
+def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
     n = SkillRoutingKeys
-    t = SkillRoutingKeys
-    nodes: dict[str, TriggerNodeDTO] = {
-        n.INIT_SKILL_RUN: TriggerNodeDTO(
-            name=n.INIT_SKILL_RUN,
-            trigger_key=t.INIT_SKILL_RUN,
+    return {
+        n.INIT_SKILL_RUN: SkillRoutingNodeConfig(
+            trigger_key=n.INIT_SKILL_RUN,
+            trigger_factory=lambda: InitSkillRunTrigger(),
             routes=TriggerRoutesDTO(default=n.IS_TRANSFER),
         ),
-        n.IS_TRANSFER: TriggerNodeDTO(
-            name=n.IS_TRANSFER,
-            trigger_key=t.IS_TRANSFER,
+        n.IS_TRANSFER: SkillRoutingNodeConfig(
+            trigger_key=n.IS_TRANSFER,
+            trigger_factory=lambda: IsTransferTrigger(),
             routes=TriggerRoutesDTO(
                 yes=n.CLASSIFICATION_SKILL_ID_IS_NULL,
                 no=n.IS_TWORK_DATA_SKILL_ID_NULL,
             ),
         ),
-        n.CLASSIFICATION_SKILL_ID_IS_NULL: TriggerNodeDTO(
-            name=n.CLASSIFICATION_SKILL_ID_IS_NULL,
-            trigger_key=t.CLASSIFICATION_SKILL_ID_IS_NULL,
+        n.CLASSIFICATION_SKILL_ID_IS_NULL: SkillRoutingNodeConfig(
+            trigger_key=n.CLASSIFICATION_SKILL_ID_IS_NULL,
+            trigger_factory=lambda: IsClassificationSkillIdNullTrigger(),
             routes=TriggerRoutesDTO(
                 yes=n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT,
                 no=n.GET_SKILL_SETTINGS,
             ),
         ),
-        n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: TriggerNodeDTO(
-            name=n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT,
-            trigger_key=t.RESOLVE_SKILL_FROM_ROUTE_DEFAULT,
+        n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: SkillRoutingNodeConfig(
+            trigger_key=n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT,
+            trigger_factory=lambda: ResolveSkillFromRouteDefaultTrigger(),
             routes=TriggerRoutesDTO(default=n.GET_SKILL_SETTINGS),
         ),
-        n.IS_TWORK_DATA_SKILL_ID_NULL: TriggerNodeDTO(
-            name=n.IS_TWORK_DATA_SKILL_ID_NULL,
-            trigger_key=t.IS_TWORK_DATA_SKILL_ID_NULL,
+        n.IS_TWORK_DATA_SKILL_ID_NULL: SkillRoutingNodeConfig(
+            trigger_key=n.IS_TWORK_DATA_SKILL_ID_NULL,
+            trigger_factory=lambda: IsTworkDataSkillIdNullTrigger(),
             routes=TriggerRoutesDTO(
                 yes=n.RESOLVE_RETRANSFER_SKILL,
                 no=n.IS_TRANSFER_AFTER_TWORK,
             ),
         ),
-        n.RESOLVE_RETRANSFER_SKILL: TriggerNodeDTO(
-            name=n.RESOLVE_RETRANSFER_SKILL,
-            trigger_key=t.RESOLVE_RETRANSFER_SKILL,
+        n.RESOLVE_RETRANSFER_SKILL: SkillRoutingNodeConfig(
+            trigger_key=n.RESOLVE_RETRANSFER_SKILL,
+            trigger_factory=lambda: ResolveRetransferSkillTrigger(),
             routes=TriggerRoutesDTO(default=n.APPEND_RETRANSFER_SKILL),
         ),
-        n.APPEND_RETRANSFER_SKILL: TriggerNodeDTO(
-            name=n.APPEND_RETRANSFER_SKILL,
-            trigger_key=t.APPEND_RETRANSFER_SKILL,
+        n.APPEND_RETRANSFER_SKILL: SkillRoutingNodeConfig(
+            trigger_key=n.APPEND_RETRANSFER_SKILL,
+            trigger_factory=lambda: AppendRetransferSkillTrigger(),
             routes=TriggerRoutesDTO(default=n.FINISH),
         ),
-        n.IS_TRANSFER_AFTER_TWORK: TriggerNodeDTO(
-            name=n.IS_TRANSFER_AFTER_TWORK,
-            trigger_key=t.IS_TRANSFER_AFTER_TWORK,
+        n.IS_TRANSFER_AFTER_TWORK: SkillRoutingNodeConfig(
+            trigger_key=n.IS_TRANSFER_AFTER_TWORK,
+            trigger_factory=lambda: IsTransferAfterTworkTrigger(),
             routes=TriggerRoutesDTO(yes=n.RESOLVE_TRANSFER_SKILL, no=n.GET_SKILL_SETTINGS),
         ),
-        n.RESOLVE_TRANSFER_SKILL: TriggerNodeDTO(
-            name=n.RESOLVE_TRANSFER_SKILL,
-            trigger_key=t.RESOLVE_TRANSFER_SKILL,
+        n.RESOLVE_TRANSFER_SKILL: SkillRoutingNodeConfig(
+            trigger_key=n.RESOLVE_TRANSFER_SKILL,
+            trigger_factory=lambda: ResolveTransferSkillTrigger(),
             routes=TriggerRoutesDTO(default=n.APPEND_TRANSFER_SKILL),
         ),
-        n.APPEND_TRANSFER_SKILL: TriggerNodeDTO(
-            name=n.APPEND_TRANSFER_SKILL,
-            trigger_key=t.APPEND_TRANSFER_SKILL,
+        n.APPEND_TRANSFER_SKILL: SkillRoutingNodeConfig(
+            trigger_key=n.APPEND_TRANSFER_SKILL,
+            trigger_factory=lambda: AppendTransferSkillTrigger(),
             routes=TriggerRoutesDTO(default=n.FINISH),
         ),
-        n.GET_SKILL_SETTINGS: TriggerNodeDTO(
-            name=n.GET_SKILL_SETTINGS,
-            trigger_key=t.GET_SKILL_SETTINGS,
+        n.GET_SKILL_SETTINGS: SkillRoutingNodeConfig(
+            trigger_key=n.GET_SKILL_SETTINGS,
+            trigger_factory=lambda: GetSkillSettingsTrigger(),
             routes=TriggerRoutesDTO(default=n.SKILL_SETTINGS_RECEIVED),
         ),
-        n.SKILL_SETTINGS_RECEIVED: TriggerNodeDTO(
-            name=n.SKILL_SETTINGS_RECEIVED,
-            trigger_key=t.SKILL_SETTINGS_RECEIVED,
+        n.SKILL_SETTINGS_RECEIVED: SkillRoutingNodeConfig(
+            trigger_key=n.SKILL_SETTINGS_RECEIVED,
+            trigger_factory=lambda: SkillSettingsReceivedTrigger(),
             routes=TriggerRoutesDTO(yes=n.HAS_NUMERIC_IDENTIFIER, no=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.HAS_NUMERIC_IDENTIFIER: TriggerNodeDTO(
-            name=n.HAS_NUMERIC_IDENTIFIER,
-            trigger_key=t.HAS_NUMERIC_IDENTIFIER,
+        n.HAS_NUMERIC_IDENTIFIER: SkillRoutingNodeConfig(
+            trigger_key=n.HAS_NUMERIC_IDENTIFIER,
+            trigger_factory=lambda: HasNumericIdentifierTrigger(),
             routes=TriggerRoutesDTO(yes=n.SKILL_ACTIVE, no=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.SKILL_ACTIVE: TriggerNodeDTO(
-            name=n.SKILL_ACTIVE,
-            trigger_key=t.SKILL_ACTIVE,
+        n.SKILL_ACTIVE: SkillRoutingNodeConfig(
+            trigger_key=n.SKILL_ACTIVE,
+            trigger_factory=lambda: IsSkillActiveTrigger(),
             routes=TriggerRoutesDTO(yes=n.IS_TRANSFER_FORBIDDEN, no=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.IS_TRANSFER_FORBIDDEN: TriggerNodeDTO(
-            name=n.IS_TRANSFER_FORBIDDEN,
-            trigger_key=t.IS_TRANSFER_FORBIDDEN,
+        n.IS_TRANSFER_FORBIDDEN: SkillRoutingNodeConfig(
+            trigger_key=n.IS_TRANSFER_FORBIDDEN,
+            trigger_factory=lambda: IsTransferForbiddenTrigger(),
             routes=TriggerRoutesDTO(yes=n.WORKTIME_ENABLED, no=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.WORKTIME_ENABLED: TriggerNodeDTO(
-            name=n.WORKTIME_ENABLED,
-            trigger_key=t.WORKTIME_ENABLED,
+        n.WORKTIME_ENABLED: SkillRoutingNodeConfig(
+            trigger_key=n.WORKTIME_ENABLED,
+            trigger_factory=lambda: IsWorktimeEnabledTrigger(),
             routes=TriggerRoutesDTO(yes=n.WORKTIME_RANGE_SINGLE_VALUE, no=n.APPEND_CURRENT_SKILL),
         ),
-        n.WORKTIME_RANGE_SINGLE_VALUE: TriggerNodeDTO(
-            name=n.WORKTIME_RANGE_SINGLE_VALUE,
-            trigger_key=t.WORKTIME_RANGE_SINGLE_VALUE,
+        n.WORKTIME_RANGE_SINGLE_VALUE: SkillRoutingNodeConfig(
+            trigger_key=n.WORKTIME_RANGE_SINGLE_VALUE,
+            trigger_factory=lambda: IsWorktimeRangeSingleValueTrigger(),
             routes=TriggerRoutesDTO(yes=n.APPEND_CURRENT_SKILL, no=n.IS_NOW_WORKTIME),
         ),
-        n.IS_NOW_WORKTIME: TriggerNodeDTO(
-            name=n.IS_NOW_WORKTIME,
-            trigger_key=t.IS_NOW_WORKTIME,
+        n.IS_NOW_WORKTIME: SkillRoutingNodeConfig(
+            trigger_key=n.IS_NOW_WORKTIME,
+            trigger_factory=lambda: IsNowWorktimeTrigger(),
             routes=TriggerRoutesDTO(yes=n.APPEND_CURRENT_SKILL, no=n.HAS_RESERVE_SKILL),
         ),
-        n.HAS_RESERVE_SKILL: TriggerNodeDTO(
-            name=n.HAS_RESERVE_SKILL,
-            trigger_key=t.HAS_RESERVE_SKILL,
+        n.HAS_RESERVE_SKILL: SkillRoutingNodeConfig(
+            trigger_key=n.HAS_RESERVE_SKILL,
+            trigger_factory=lambda: HasReserveSkillTrigger(),
             routes=TriggerRoutesDTO(yes=n.APPEND_CURRENT_SKILL_FOR_RESERVE, no=n.STUB),
         ),
-        n.APPEND_CURRENT_SKILL_FOR_RESERVE: TriggerNodeDTO(
-            name=n.APPEND_CURRENT_SKILL_FOR_RESERVE,
-            trigger_key=t.APPEND_CURRENT_SKILL_FOR_RESERVE,
+        n.APPEND_CURRENT_SKILL_FOR_RESERVE: SkillRoutingNodeConfig(
+            trigger_key=n.APPEND_CURRENT_SKILL_FOR_RESERVE,
+            trigger_factory=lambda: AppendCurrentSkillForReserveTrigger(),
             routes=TriggerRoutesDTO(default=n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS),
         ),
-        n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: TriggerNodeDTO(
-            name=n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS,
-            trigger_key=t.RESERVE_SKILL_IN_SKILL_JSON_EXISTS,
+        n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: SkillRoutingNodeConfig(
+            trigger_key=n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS,
+            trigger_factory=lambda: ReserveSkillInSkillJsonExistsTrigger(),
             routes=TriggerRoutesDTO(yes=n.INCREMENT_WITH_RESERVE_TIMEOUT, no=n.FINISH_NO_RESERVE),
         ),
-        n.INCREMENT_WITH_RESERVE_TIMEOUT: TriggerNodeDTO(
-            name=n.INCREMENT_WITH_RESERVE_TIMEOUT,
-            trigger_key=t.INCREMENT_WITH_RESERVE_TIMEOUT,
+        n.INCREMENT_WITH_RESERVE_TIMEOUT: SkillRoutingNodeConfig(
+            trigger_key=n.INCREMENT_WITH_RESERVE_TIMEOUT,
+            trigger_factory=lambda: IncrementWithReserveTimeoutTrigger(),
             routes=TriggerRoutesDTO(default=n.TAKE_RESERVE_SKILL_FROM_SMART_IVR),
         ),
-        n.TAKE_RESERVE_SKILL_FROM_SMART_IVR: TriggerNodeDTO(
-            name=n.TAKE_RESERVE_SKILL_FROM_SMART_IVR,
-            trigger_key=t.TAKE_RESERVE_SKILL_FROM_SMART_IVR,
+        n.TAKE_RESERVE_SKILL_FROM_SMART_IVR: SkillRoutingNodeConfig(
+            trigger_key=n.TAKE_RESERVE_SKILL_FROM_SMART_IVR,
+            trigger_factory=lambda: TakeReserveSkillFromSmartIvrTrigger(),
             routes=TriggerRoutesDTO(default=n.RESERVE_SKILL_FOUND),
         ),
-        n.RESERVE_SKILL_FOUND: TriggerNodeDTO(
-            name=n.RESERVE_SKILL_FOUND,
-            trigger_key=t.RESERVE_SKILL_FOUND,
+        n.RESERVE_SKILL_FOUND: SkillRoutingNodeConfig(
+            trigger_key=n.RESERVE_SKILL_FOUND,
+            trigger_factory=lambda: ReserveSkillFoundTrigger(),
             routes=TriggerRoutesDTO(yes=n.SET_CURRENT_SKILL_TO_RESERVE, no=n.FINISH_NO_RESERVE),
         ),
-        n.SET_CURRENT_SKILL_TO_RESERVE: TriggerNodeDTO(
-            name=n.SET_CURRENT_SKILL_TO_RESERVE,
-            trigger_key=t.SET_CURRENT_SKILL_TO_RESERVE,
+        n.SET_CURRENT_SKILL_TO_RESERVE: SkillRoutingNodeConfig(
+            trigger_key=n.SET_CURRENT_SKILL_TO_RESERVE,
+            trigger_factory=lambda: SetCurrentSkillToReserveTrigger(),
             routes=TriggerRoutesDTO(default=n.APPEND_CURRENT_SKILL),
         ),
-        n.STUB: TriggerNodeDTO(
-            name=n.STUB,
-            trigger_key=t.STUB,
+        n.STUB: SkillRoutingNodeConfig(
+            trigger_key=n.STUB,
+            trigger_factory=lambda: StubTrigger(),
             routes=TriggerRoutesDTO(default=n.CURRENT_SKILL_NUM_IS_ZERO),
         ),
-        n.CURRENT_SKILL_NUM_IS_ZERO: TriggerNodeDTO(
-            name=n.CURRENT_SKILL_NUM_IS_ZERO,
-            trigger_key=t.CURRENT_SKILL_NUM_IS_ZERO,
+        n.CURRENT_SKILL_NUM_IS_ZERO: SkillRoutingNodeConfig(
+            trigger_key=n.CURRENT_SKILL_NUM_IS_ZERO,
+            trigger_factory=lambda: CurrentSkillNumIsZeroTrigger(),
             routes=TriggerRoutesDTO(yes=n.APPEND_CURRENT_SKILL, no=n.FINISH_NO_RESERVE),
         ),
-        n.APPEND_CURRENT_SKILL: TriggerNodeDTO(
-            name=n.APPEND_CURRENT_SKILL,
-            trigger_key=t.APPEND_CURRENT_SKILL,
+        n.APPEND_CURRENT_SKILL: SkillRoutingNodeConfig(
+            trigger_key=n.APPEND_CURRENT_SKILL,
+            trigger_factory=lambda: AppendCurrentSkillTrigger(),
             routes=TriggerRoutesDTO(default=n.FINISH),
         ),
-        n.FINISH: TriggerNodeDTO(
-            name=n.FINISH,
-            trigger_key=t.FINISH,
+        n.FINISH: SkillRoutingNodeConfig(
+            trigger_key=n.FINISH,
+            trigger_factory=lambda: FinishTrigger(),
             routes=TriggerRoutesDTO(),
         ),
-        n.FINISH_NO_RESERVE: TriggerNodeDTO(
-            name=n.FINISH_NO_RESERVE,
-            trigger_key=t.FINISH,
+        n.FINISH_NO_RESERVE: SkillRoutingNodeConfig(
+            trigger_key=n.FINISH,
+            trigger_factory=lambda: FinishTrigger(),
             routes=TriggerRoutesDTO(),
         ),
     }
 
-    if route_overrides:
-        for node_name, routes in route_overrides.items():
-            if node_name not in nodes:
-                raise KeyError(f"Unknown node for route override: '{node_name}'")
-            nodes[node_name].routes = routes
 
-    return WorkflowDTO(start_node=n.INIT_SKILL_RUN, nodes=nodes)
+def _validate_no_skill_routing_cycles(workflow: WorkflowDTO) -> None:
+    visited: set[str] = set()
+    recursion_stack: set[str] = set()
+    path: list[str] = []
+
+    def walk(node_name: str) -> None:
+        if node_name in recursion_stack:
+            cycle_start = path.index(node_name)
+            cycle_path = " -> ".join(path[cycle_start:] + [node_name])
+            raise ValueError(f"Detected cycle in skill routing workflow: {cycle_path}")
+        if node_name in visited:
+            return
+
+        recursion_stack.add(node_name)
+        path.append(node_name)
+        node = workflow.nodes[node_name]
+        next_nodes: list[str] = []
+        seen_next_nodes: set[str] = set()
+        for route in (node.routes.yes, node.routes.no, node.routes.default):
+            if route is None or route in seen_next_nodes:
+                continue
+            seen_next_nodes.add(route)
+            next_nodes.append(route)
+        for next_node in next_nodes:
+            walk(next_node)
+
+        path.pop()
+        recursion_stack.remove(node_name)
+        visited.add(node_name)
+
+    walk(workflow.start_node)
+
+
+def _validate_terminal_states(workflow: WorkflowDTO, terminal_states: frozenset[str]) -> None:
+    missing = sorted(terminal_states - set(workflow.nodes.keys()))
+    if missing:
+        raise ValueError(
+            "Missing terminal states in skill routing workflow: "
+            + ", ".join(f"'{state}'" for state in missing)
+        )
+
+    for terminal_state in terminal_states:
+        routes = workflow.nodes[terminal_state].routes
+        if any(route is not None for route in (routes.yes, routes.no, routes.default)):
+            raise ValueError(f"Terminal state '{terminal_state}' must not have outgoing routes")
+
+
+class SkillRoutingStateMachineFactory:
+    def __init__(self, route_overrides: dict[str, TriggerRoutesDTO] | None = None) -> None:
+        self._route_overrides = route_overrides
+
+    def create(self) -> StatefulWorkflow:
+        config = self._build_config()
+        return StatefulWorkflow(
+            workflow=self._build_workflow(config),
+            trigger_factories=self._build_trigger_factories(config),
+        )
+
+    def create_workflow(self) -> WorkflowDTO:
+        config = self._build_config()
+        return self._build_workflow(config)
+
+    def create_trigger_factories(self) -> dict[str, TriggerFactory]:
+        config = self._build_config()
+        return self._build_trigger_factories(config)
+
+    def _build_config(self) -> SkillRoutingMachineConfig:
+        node_configs = _build_skill_routing_node_configs()
+        if self._route_overrides:
+            for node_name, routes in self._route_overrides.items():
+                if node_name not in node_configs:
+                    raise KeyError(f"Unknown node for route override: '{node_name}'")
+                config = node_configs[node_name]
+                node_configs[node_name] = SkillRoutingNodeConfig(
+                    trigger_key=config.trigger_key,
+                    trigger_factory=config.trigger_factory,
+                    routes=routes,
+                )
+        return SkillRoutingMachineConfig(
+            initial_state=SkillRoutingKeys.INIT_SKILL_RUN,
+            terminal_states=SKILL_ROUTING_TERMINAL_STATES,
+            node_configs=node_configs,
+        )
+
+    @staticmethod
+    def _build_workflow(config: SkillRoutingMachineConfig) -> WorkflowDTO:
+        nodes = {
+            node_name: TriggerNodeDTO(
+                name=node_name,
+                trigger_key=node_config.trigger_key,
+                routes=node_config.routes,
+            )
+            for node_name, node_config in config.node_configs.items()
+        }
+        workflow = WorkflowDTO(start_node=config.initial_state, nodes=nodes)
+        _validate_terminal_states(workflow, config.terminal_states)
+        _validate_no_skill_routing_cycles(workflow)
+        return workflow
+
+    @staticmethod
+    def _build_trigger_factories(
+        config: SkillRoutingMachineConfig,
+    ) -> dict[str, TriggerFactory]:
+        trigger_factories: dict[str, TriggerFactory] = {}
+        for node_config in config.node_configs.values():
+            trigger_factories[node_config.trigger_key] = node_config.trigger_factory
+        return trigger_factories
+
+
+def build_skill_routing_workflow(
+    route_overrides: dict[str, TriggerRoutesDTO] | None = None,
+) -> WorkflowDTO:
+    return SkillRoutingStateMachineFactory(route_overrides=route_overrides).create_workflow()
 
 
 def build_skill_routing_trigger_factories() -> dict[str, TriggerFactory]:
-    t = SkillRoutingKeys
-    return {
-        t.INIT_SKILL_RUN: lambda: InitSkillRunTrigger(),
-        t.IS_TRANSFER: lambda: IsTransferTrigger(),
-        t.CLASSIFICATION_SKILL_ID_IS_NULL: lambda: IsClassificationSkillIdNullTrigger(),
-        t.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: lambda: ResolveSkillFromRouteDefaultTrigger(),
-        t.IS_TWORK_DATA_SKILL_ID_NULL: lambda: IsTworkDataSkillIdNullTrigger(),
-        t.RESOLVE_RETRANSFER_SKILL: lambda: ResolveRetransferSkillTrigger(),
-        t.APPEND_RETRANSFER_SKILL: lambda: AppendRetransferSkillTrigger(),
-        t.IS_TRANSFER_AFTER_TWORK: lambda: IsTransferAfterTworkTrigger(),
-        t.RESOLVE_TRANSFER_SKILL: lambda: ResolveTransferSkillTrigger(),
-        t.APPEND_TRANSFER_SKILL: lambda: AppendTransferSkillTrigger(),
-        t.GET_SKILL_SETTINGS: lambda: GetSkillSettingsTrigger(),
-        t.SKILL_SETTINGS_RECEIVED: lambda: SkillSettingsReceivedTrigger(),
-        t.HAS_NUMERIC_IDENTIFIER: lambda: HasNumericIdentifierTrigger(),
-        t.SKILL_ACTIVE: lambda: IsSkillActiveTrigger(),
-        t.IS_TRANSFER_FORBIDDEN: lambda: IsTransferForbiddenTrigger(),
-        t.WORKTIME_ENABLED: lambda: IsWorktimeEnabledTrigger(),
-        t.WORKTIME_RANGE_SINGLE_VALUE: lambda: IsWorktimeRangeSingleValueTrigger(),
-        t.IS_NOW_WORKTIME: lambda: IsNowWorktimeTrigger(),
-        t.HAS_RESERVE_SKILL: lambda: HasReserveSkillTrigger(),
-        t.APPEND_CURRENT_SKILL_FOR_RESERVE: lambda: AppendCurrentSkillForReserveTrigger(),
-        t.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: lambda: ReserveSkillInSkillJsonExistsTrigger(),
-        t.INCREMENT_WITH_RESERVE_TIMEOUT: lambda: IncrementWithReserveTimeoutTrigger(),
-        t.TAKE_RESERVE_SKILL_FROM_SMART_IVR: lambda: TakeReserveSkillFromSmartIvrTrigger(),
-        t.RESERVE_SKILL_FOUND: lambda: ReserveSkillFoundTrigger(),
-        t.SET_CURRENT_SKILL_TO_RESERVE: lambda: SetCurrentSkillToReserveTrigger(),
-        t.STUB: lambda: StubTrigger(),
-        t.CURRENT_SKILL_NUM_IS_ZERO: lambda: CurrentSkillNumIsZeroTrigger(),
-        t.APPEND_CURRENT_SKILL: lambda: AppendCurrentSkillTrigger(),
-        t.FINISH: lambda: FinishTrigger(),
-    }
+    return SkillRoutingStateMachineFactory().create_trigger_factories()
 
 
 def build_skill_routing_state_machine(
     route_overrides: dict[str, TriggerRoutesDTO] | None = None,
 ) -> StatefulWorkflow:
-    workflow = build_skill_routing_workflow(route_overrides=route_overrides)
-    return StatefulWorkflow(
-        workflow=workflow,
-        trigger_factories=build_skill_routing_trigger_factories(),
-    )
+    return SkillRoutingStateMachineFactory(route_overrides=route_overrides).create()

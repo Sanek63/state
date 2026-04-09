@@ -152,6 +152,33 @@ class StateMachineTests(unittest.TestCase):
         self.assertEqual([item.node for item in history], ["first", "second", "third"])
         self.assertEqual(workflow_machine.current_node, "third")
 
+    def test_run_raises_on_cycle_when_max_steps_reached(self) -> None:
+        workflow = WorkflowDTO(
+            start_node="first",
+            nodes={
+                "first": TriggerNodeDTO(
+                    name="first",
+                    trigger_key="always_yes",
+                    routes=TriggerRoutesDTO(yes="second"),
+                ),
+                "second": TriggerNodeDTO(
+                    name="second",
+                    trigger_key="always_no",
+                    routes=TriggerRoutesDTO(no="first"),
+                ),
+            },
+        )
+        workflow_machine = StatefulWorkflow(
+            workflow=workflow,
+            trigger_factories={
+                "always_yes": lambda: AlwaysYesTrigger(),
+                "always_no": lambda: AlwaysNoTrigger(),
+            },
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "max_steps limit"):
+            workflow_machine.run(TriggerContextDTO(), max_steps=4)
+
 
 if __name__ == "__main__":
     unittest.main()

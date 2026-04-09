@@ -2,11 +2,33 @@ import unittest
 
 from state_machine.skill_routing import (
     SkillRoutingContextDTO,
+    SkillRoutingKeys,
+    SkillRoutingStateMachineFactory,
+    build_skill_routing_workflow,
     build_skill_routing_state_machine,
 )
+from state_machine.dto import TriggerRoutesDTO
 
 
 class SkillRoutingSchemeTests(unittest.TestCase):
+    def test_factory_create_builds_machine(self) -> None:
+        machine = SkillRoutingStateMachineFactory().create()
+        self.assertEqual(machine.current_node, SkillRoutingKeys.INIT_SKILL_RUN)
+
+    def test_skill_routing_workflow_has_no_cycles(self) -> None:
+        workflow = build_skill_routing_workflow()
+        self.assertEqual(workflow.start_node, SkillRoutingKeys.INIT_SKILL_RUN)
+
+    def test_cycle_in_route_override_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Detected cycle in skill routing workflow"):
+            build_skill_routing_workflow(
+                route_overrides={
+                    SkillRoutingKeys.APPEND_CURRENT_SKILL: TriggerRoutesDTO(
+                        default=SkillRoutingKeys.GET_SKILL_SETTINGS
+                    )
+                }
+            )
+
     def test_transfer_path_with_route_default_skill(self) -> None:
         machine = build_skill_routing_state_machine()
         context = SkillRoutingContextDTO(
