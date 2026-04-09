@@ -282,7 +282,6 @@ SKILL_ROUTING_TERMINAL_STATES = frozenset(
 @dataclass(frozen=True, slots=True)
 class SkillRoutingNodeConfig:
     trigger_key: str
-    trigger_type: type[BaseTrigger]
     trigger_name: str | None = None
     trigger_doc: str | None = None
     routes: TriggerRoutesDTO = field(default_factory=TriggerRoutesDTO)
@@ -332,7 +331,6 @@ def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
     ) -> SkillRoutingNodeConfig:
         return SkillRoutingNodeConfig(
             trigger_key=trigger_key,
-            trigger_type=trigger_cls,
             trigger_name=trigger_cls.name,
             trigger_doc=trigger_cls.doc,
             routes=routes,
@@ -748,7 +746,7 @@ class SkillRoutingStateMachineFactory:
         return self._build_workflow(config)
 
     def create_trigger_factories(self) -> dict[str, TriggerFactory]:
-        self._build_config()
+        _ = self._build_config()  # validate route overrides and keep API behavior
         container = _create_skill_routing_container()
         return _build_skill_routing_trigger_factories(container)
 
@@ -761,7 +759,6 @@ class SkillRoutingStateMachineFactory:
                 config = node_configs[node_name]
                 node_configs[node_name] = SkillRoutingNodeConfig(
                     trigger_key=config.trigger_key,
-                    trigger_type=config.trigger_type,
                     trigger_name=config.trigger_name,
                     trigger_doc=config.trigger_doc,
                     routes=routes,
