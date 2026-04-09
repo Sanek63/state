@@ -308,7 +308,7 @@ class MachineState:
 
     def run(
         self,
-        context: TriggerContextDTO,
+        context: SkillRoutingContextDTO,
         max_steps: int = 100,
     ) -> list[WorkflowStepResultDTO]:
         return self.state_machine.run(context=context, max_steps=max_steps)
@@ -548,20 +548,198 @@ def _validate_terminal_states(workflow: WorkflowDTO, terminal_states: frozenset[
             raise ValueError(f"Terminal state '{terminal_state}' must not have outgoing routes")
 
 
+def _attach_skill_routing_triggers(container: Container) -> None:
+    container.register(InitSkillRunTrigger, factory=lambda: InitSkillRunTrigger())
+    container.register(IsTransferTrigger, factory=lambda: IsTransferTrigger())
+    container.register(
+        IsClassificationSkillIdNullTrigger,
+        factory=lambda: IsClassificationSkillIdNullTrigger(),
+    )
+    container.register(
+        ResolveSkillFromRouteDefaultTrigger,
+        factory=lambda: ResolveSkillFromRouteDefaultTrigger(),
+    )
+    container.register(IsTworkDataSkillIdNullTrigger, factory=lambda: IsTworkDataSkillIdNullTrigger())
+    container.register(ResolveRetransferSkillTrigger, factory=lambda: ResolveRetransferSkillTrigger())
+    container.register(AppendRetransferSkillTrigger, factory=lambda: AppendRetransferSkillTrigger())
+    container.register(IsTransferAfterTworkTrigger, factory=lambda: IsTransferAfterTworkTrigger())
+    container.register(ResolveTransferSkillTrigger, factory=lambda: ResolveTransferSkillTrigger())
+    container.register(AppendTransferSkillTrigger, factory=lambda: AppendTransferSkillTrigger())
+    container.register(GetSkillSettingsTrigger, factory=lambda: GetSkillSettingsTrigger())
+    container.register(SkillSettingsReceivedTrigger, factory=lambda: SkillSettingsReceivedTrigger())
+    container.register(HasNumericIdentifierTrigger, factory=lambda: HasNumericIdentifierTrigger())
+    container.register(IsSkillActiveTrigger, factory=lambda: IsSkillActiveTrigger())
+    container.register(IsTransferForbiddenTrigger, factory=lambda: IsTransferForbiddenTrigger())
+    container.register(IsWorktimeEnabledTrigger, factory=lambda: IsWorktimeEnabledTrigger())
+    container.register(
+        IsWorktimeRangeSingleValueTrigger,
+        factory=lambda: IsWorktimeRangeSingleValueTrigger(),
+    )
+    container.register(IsNowWorktimeTrigger, factory=lambda: IsNowWorktimeTrigger())
+    container.register(HasReserveSkillTrigger, factory=lambda: HasReserveSkillTrigger())
+    container.register(
+        AppendCurrentSkillForReserveTrigger,
+        factory=lambda: AppendCurrentSkillForReserveTrigger(),
+    )
+    container.register(
+        ReserveSkillInSkillJsonExistsTrigger,
+        factory=lambda: ReserveSkillInSkillJsonExistsTrigger(),
+    )
+    container.register(
+        IncrementWithReserveTimeoutTrigger,
+        factory=lambda: IncrementWithReserveTimeoutTrigger(),
+    )
+    container.register(
+        TakeReserveSkillFromSmartIvrTrigger,
+        factory=lambda: TakeReserveSkillFromSmartIvrTrigger(),
+    )
+    container.register(ReserveSkillFoundTrigger, factory=lambda: ReserveSkillFoundTrigger())
+    container.register(SetCurrentSkillToReserveTrigger, factory=lambda: SetCurrentSkillToReserveTrigger())
+    container.register(StubTrigger, factory=lambda: StubTrigger())
+    container.register(CurrentSkillNumIsZeroTrigger, factory=lambda: CurrentSkillNumIsZeroTrigger())
+    container.register(AppendCurrentSkillTrigger, factory=lambda: AppendCurrentSkillTrigger())
+    container.register(FinishTrigger, factory=lambda: FinishTrigger())
+
+
+def _create_skill_routing_container() -> Container:
+    container = Container()
+    _attach_skill_routing_triggers(container)
+    return container
+
+
+def _build_skill_routing_trigger_factories(container: Container) -> dict[str, TriggerFactory]:
+    n = SkillRoutingKeys
+    return {
+        n.INIT_SKILL_RUN: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            InitSkillRunTrigger,
+        ),
+        n.IS_TRANSFER: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IsTransferTrigger,
+        ),
+        n.CLASSIFICATION_SKILL_ID_IS_NULL: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IsClassificationSkillIdNullTrigger,
+        ),
+        n.RESOLVE_SKILL_FROM_ROUTE_DEFAULT: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            ResolveSkillFromRouteDefaultTrigger,
+        ),
+        n.IS_TWORK_DATA_SKILL_ID_NULL: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IsTworkDataSkillIdNullTrigger,
+        ),
+        n.RESOLVE_RETRANSFER_SKILL: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            ResolveRetransferSkillTrigger,
+        ),
+        n.APPEND_RETRANSFER_SKILL: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            AppendRetransferSkillTrigger,
+        ),
+        n.IS_TRANSFER_AFTER_TWORK: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IsTransferAfterTworkTrigger,
+        ),
+        n.RESOLVE_TRANSFER_SKILL: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            ResolveTransferSkillTrigger,
+        ),
+        n.APPEND_TRANSFER_SKILL: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            AppendTransferSkillTrigger,
+        ),
+        n.GET_SKILL_SETTINGS: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            GetSkillSettingsTrigger,
+        ),
+        n.SKILL_SETTINGS_RECEIVED: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            SkillSettingsReceivedTrigger,
+        ),
+        n.HAS_NUMERIC_IDENTIFIER: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            HasNumericIdentifierTrigger,
+        ),
+        n.SKILL_ACTIVE: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IsSkillActiveTrigger,
+        ),
+        n.IS_TRANSFER_FORBIDDEN: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IsTransferForbiddenTrigger,
+        ),
+        n.WORKTIME_ENABLED: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IsWorktimeEnabledTrigger,
+        ),
+        n.WORKTIME_RANGE_SINGLE_VALUE: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IsWorktimeRangeSingleValueTrigger,
+        ),
+        n.IS_NOW_WORKTIME: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IsNowWorktimeTrigger,
+        ),
+        n.HAS_RESERVE_SKILL: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            HasReserveSkillTrigger,
+        ),
+        n.APPEND_CURRENT_SKILL_FOR_RESERVE: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            AppendCurrentSkillForReserveTrigger,
+        ),
+        n.RESERVE_SKILL_IN_SKILL_JSON_EXISTS: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            ReserveSkillInSkillJsonExistsTrigger,
+        ),
+        n.INCREMENT_WITH_RESERVE_TIMEOUT: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            IncrementWithReserveTimeoutTrigger,
+        ),
+        n.TAKE_RESERVE_SKILL_FROM_SMART_IVR: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            TakeReserveSkillFromSmartIvrTrigger,
+        ),
+        n.RESERVE_SKILL_FOUND: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            ReserveSkillFoundTrigger,
+        ),
+        n.SET_CURRENT_SKILL_TO_RESERVE: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            SetCurrentSkillToReserveTrigger,
+        ),
+        n.STUB: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            StubTrigger,
+        ),
+        n.CURRENT_SKILL_NUM_IS_ZERO: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            CurrentSkillNumIsZeroTrigger,
+        ),
+        n.APPEND_CURRENT_SKILL: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            AppendCurrentSkillTrigger,
+        ),
+        n.FINISH: SkillRoutingStateMachineFactory._build_trigger_factory(
+            container,
+            FinishTrigger,
+        ),
+    }
+
+
 class SkillRoutingStateMachineFactory:
     def __init__(self, route_overrides: dict[str, TriggerRoutesDTO] | None = None) -> None:
         self._route_overrides = route_overrides
 
     def create(self) -> MachineState:
         config = self._build_config()
-        trigger_types = self._build_registered_trigger_types(config)
-        container = self._build_trigger_container(trigger_types)
+        container = _create_skill_routing_container()
+        trigger_factories = _build_skill_routing_trigger_factories(container)
         state_machine = StatefulWorkflow(
             workflow=self._build_workflow(config),
-            trigger_factories=self._build_trigger_factories(
-                container=container,
-                trigger_types=trigger_types,
-            ),
+            trigger_factories=trigger_factories,
         )
         return MachineState(state_machine=state_machine)
 
@@ -570,13 +748,9 @@ class SkillRoutingStateMachineFactory:
         return self._build_workflow(config)
 
     def create_trigger_factories(self) -> dict[str, TriggerFactory]:
-        config = self._build_config()
-        trigger_types = self._build_registered_trigger_types(config)
-        container = self._build_trigger_container(trigger_types)
-        return self._build_trigger_factories(
-            container=container,
-            trigger_types=trigger_types,
-        )
+        self._build_config()
+        container = _create_skill_routing_container()
+        return _build_skill_routing_trigger_factories(container)
 
     def _build_config(self) -> SkillRoutingMachineConfig:
         node_configs = _build_skill_routing_node_configs()
@@ -614,43 +788,6 @@ class SkillRoutingStateMachineFactory:
         _validate_terminal_states(workflow, config.terminal_states)
         _validate_no_skill_routing_cycles(workflow)
         return workflow
-
-    def _build_trigger_container(self, trigger_types: dict[str, type[BaseTrigger]]) -> Container:
-        container = Container()
-        for trigger_type in trigger_types.values():
-            container.register(
-                trigger_type,
-                factory=lambda trigger_type=trigger_type: trigger_type(),
-            )
-        return container
-
-    @staticmethod
-    def _build_registered_trigger_types(
-        config: SkillRoutingMachineConfig,
-    ) -> dict[str, type[BaseTrigger]]:
-        trigger_types: dict[str, type[BaseTrigger]] = {}
-        for node_config in config.node_configs.values():
-            existing_type = trigger_types.get(node_config.trigger_key)
-            if existing_type is not None and existing_type != node_config.trigger_type:
-                raise ValueError(
-                    f"Conflicting trigger types for key '{node_config.trigger_key}': "
-                    f"{existing_type.__name__} vs {node_config.trigger_type.__name__}"
-                )
-            trigger_types[node_config.trigger_key] = node_config.trigger_type
-        return trigger_types
-
-    @staticmethod
-    def _build_trigger_factories(
-        container: Container,
-        trigger_types: dict[str, type[BaseTrigger]],
-    ) -> dict[str, TriggerFactory]:
-        return {
-            trigger_key: SkillRoutingStateMachineFactory._build_trigger_factory(
-                container=container,
-                trigger_type=trigger_type,
-            )
-            for trigger_key, trigger_type in trigger_types.items()
-        }
 
     @staticmethod
     def _build_trigger_factory(
