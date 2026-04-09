@@ -554,12 +554,13 @@ class SkillRoutingStateMachineFactory:
 
     def create(self) -> MachineState:
         config = self._build_config()
+        trigger_types = self._build_registered_trigger_types(config)
         container = self._build_trigger_container(config)
         state_machine = StatefulWorkflow(
             workflow=self._build_workflow(config),
             trigger_factories=self._build_trigger_factories(
                 container=container,
-                trigger_keys=self._build_registered_trigger_keys(config),
+                trigger_types=trigger_types,
             ),
         )
         return MachineState(state_machine=state_machine)
@@ -570,10 +571,11 @@ class SkillRoutingStateMachineFactory:
 
     def create_trigger_factories(self) -> dict[str, TriggerFactory]:
         config = self._build_config()
+        trigger_types = self._build_registered_trigger_types(config)
         container = self._build_trigger_container(config)
         return self._build_trigger_factories(
             container=container,
-            trigger_keys=self._build_registered_trigger_keys(config),
+            trigger_types=trigger_types,
         )
 
     def _build_config(self) -> SkillRoutingMachineConfig:
@@ -616,8 +618,8 @@ class SkillRoutingStateMachineFactory:
     def _build_trigger_container(self, config: SkillRoutingMachineConfig) -> Container:
         trigger_types = self._build_registered_trigger_types(config)
         container = Container()
-        for trigger_key, trigger_type in trigger_types.items():
-            container.register(trigger_key, trigger_type)
+        for trigger_type in trigger_types.values():
+            container.register(trigger_type, trigger_type)
         return container
 
     @staticmethod
@@ -627,7 +629,7 @@ class SkillRoutingStateMachineFactory:
         trigger_types: dict[str, type[BaseTrigger]] = {}
         for node_config in config.node_configs.values():
             existing_type = trigger_types.get(node_config.trigger_key)
-            if existing_type is not None and existing_type is not node_config.trigger_type:
+            if existing_type is not None and existing_type != node_config.trigger_type:
                 raise ValueError(
                     f"Conflicting trigger types for key '{node_config.trigger_key}': "
                     f"{existing_type.__name__} vs {node_config.trigger_type.__name__}"
@@ -635,18 +637,14 @@ class SkillRoutingStateMachineFactory:
             trigger_types[node_config.trigger_key] = node_config.trigger_type
         return trigger_types
 
-    @classmethod
-    def _build_registered_trigger_keys(cls, config: SkillRoutingMachineConfig) -> tuple[str, ...]:
-        return tuple(cls._build_registered_trigger_types(config).keys())
-
     @staticmethod
     def _build_trigger_factories(
         container: Container,
-        trigger_keys: tuple[str, ...],
+        trigger_types: dict[str, type[BaseTrigger]],
     ) -> dict[str, TriggerFactory]:
         return {
-            trigger_key: (lambda trigger_key=trigger_key: container.resolve(trigger_key))
-            for trigger_key in trigger_keys
+            trigger_key: (lambda trigger_type=trigger_type: container.resolve(trigger_type))
+            for trigger_key, trigger_type in trigger_types.items()
         }
 
 
