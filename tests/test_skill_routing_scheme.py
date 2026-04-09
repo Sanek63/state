@@ -50,23 +50,25 @@ class SkillRoutingSchemeTests(unittest.TestCase):
 
     def test_transfer_path_with_route_default_skill(self) -> None:
         machine = build_skill_routing_state_machine()
-        context = SkillRoutingContextDTO(
-            is_transfer=True,
-            classification_skill_id=None,
-            route_default_skill_mapping="route-default-skill",
-            skill_settings_received=True,
-            numeric_identifier_present=True,
-            skill_active=True,
-            transfer_allowed=False,
-            worktime_enabled=True,
-            worktime_range_single_value=True,
-        )
+        context = {
+            "is_transfer": True,
+            "classification_skill_id": None,
+            "route_default_skill_mapping": "route-default-skill",
+            "skill_settings_received": True,
+            "numeric_identifier_present": True,
+            "skill_active": True,
+            "transfer_allowed": False,
+            "worktime_enabled": True,
+            "worktime_range_single_value": True,
+        }
 
-        history = machine.run(context)
+        context_result = machine.run_and_get_result(context)
+        final_decision = machine.run_and_get_decision(context_result)
 
-        self.assertEqual(history[-1].node, "finish")
-        self.assertEqual(context.skill_json[-1]["id"], "route-default-skill")
-        self.assertEqual(context.skill_json[-1]["wait_time"], 0)
+        self.assertEqual(machine.current_node, "finish")
+        self.assertEqual(final_decision.value, "DEFAULT")
+        self.assertEqual(context_result.skill_json[-1]["id"], "route-default-skill")
+        self.assertEqual(context_result.skill_json[-1]["wait_time"], 0)
 
     def test_retransfer_fallback_path(self) -> None:
         machine = build_skill_routing_state_machine()
