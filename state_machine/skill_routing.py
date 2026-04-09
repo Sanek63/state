@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from punq import Container
+
 from .dto import (
     DecisionDTO,
     TriggerContextDTO,
@@ -11,7 +13,7 @@ from .dto import (
     TriggerRoutesDTO,
     WorkflowDTO,
 )
-from .engine import StatefulWorkflow, TriggerFactory
+from .engine import StatefulWorkflow, TriggerFactory, WorkflowStepResultDTO
 from .triggers import BaseTrigger
 
 
@@ -280,7 +282,7 @@ SKILL_ROUTING_TERMINAL_STATES = frozenset(
 @dataclass(frozen=True, slots=True)
 class SkillRoutingNodeConfig:
     trigger_key: str
-    trigger_factory: TriggerFactory
+    trigger_type: type[BaseTrigger]
     trigger_name: str | None = None
     trigger_doc: str | None = None
     routes: TriggerRoutesDTO = field(default_factory=TriggerRoutesDTO)
@@ -293,6 +295,33 @@ class SkillRoutingMachineConfig:
     node_configs: dict[str, SkillRoutingNodeConfig]
 
 
+@dataclass(slots=True)
+class MachineState:
+    state_machine: StatefulWorkflow
+
+    @property
+    def current_node(self) -> str:
+        return self.state_machine.current_node
+
+    def reset(self) -> None:
+        self.state_machine.reset()
+
+    def run(
+        self,
+        context: TriggerContextDTO,
+        max_steps: int = 100,
+    ) -> list[WorkflowStepResultDTO]:
+        return self.state_machine.run(context=context, max_steps=max_steps)
+
+    def run_and_get_result(
+        self,
+        context: SkillRoutingContextDTO,
+        max_steps: int = 100,
+    ) -> SkillRoutingContextDTO:
+        self.state_machine.run(context=context, max_steps=max_steps)
+        return context
+
+
 def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
     n = SkillRoutingKeys
 
@@ -303,7 +332,7 @@ def _build_skill_routing_node_configs() -> dict[str, SkillRoutingNodeConfig]:
     ) -> SkillRoutingNodeConfig:
         return SkillRoutingNodeConfig(
             trigger_key=trigger_key,
-            trigger_factory=lambda: trigger_cls(),
+            trigger_type=trigger_cls,
             trigger_name=trigger_cls.name,
             trigger_doc=trigger_cls.doc,
             routes=routes,
@@ -523,12 +552,14 @@ class SkillRoutingStateMachineFactory:
     def __init__(self, route_overrides: dict[str, TriggerRoutesDTO] | None = None) -> None:
         self._route_overrides = route_overrides
 
-    def create(self) -> StatefulWorkflow:
+    def create(self) -> MachineState:
         config = self._build_config()
-        return StatefulWorkflow(
+        container = self._build_trigger_container(config)
+        state_machine = StatefulWorkflow(
             workflow=self._build_workflow(config),
-            trigger_factories=self._build_trigger_factories(config),
+            trigger_factories=self._build_trigger_factories(container),
         )
+        return MachineState(state_machine=state_machine)
 
     def create_workflow(self) -> WorkflowDTO:
         config = self._build_config()
@@ -536,7 +567,8 @@ class SkillRoutingStateMachineFactory:
 
     def create_trigger_factories(self) -> dict[str, TriggerFactory]:
         config = self._build_config()
-        return self._build_trigger_factories(config)
+        container = self._build_trigger_container(config)
+        return self._build_trigger_factories(container)
 
     def _build_config(self) -> SkillRoutingMachineConfig:
         node_configs = _build_skill_routing_node_configs()
@@ -547,7 +579,7 @@ class SkillRoutingStateMachineFactory:
                 config = node_configs[node_name]
                 node_configs[node_name] = SkillRoutingNodeConfig(
                     trigger_key=config.trigger_key,
-                    trigger_factory=config.trigger_factory,
+                    trigger_type=config.trigger_type,
                     trigger_name=config.trigger_name,
                     trigger_doc=config.trigger_doc,
                     routes=routes,
@@ -575,14 +607,28 @@ class SkillRoutingStateMachineFactory:
         _validate_no_skill_routing_cycles(workflow)
         return workflow
 
-    @staticmethod
-    def _build_trigger_factories(
-        config: SkillRoutingMachineConfig,
-    ) -> dict[str, TriggerFactory]:
-        trigger_factories: dict[str, TriggerFactory] = {}
+    def _build_trigger_container(self, config: SkillRoutingMachineConfig) -> Container:
+        trigger_types: dict[str, type[BaseTrigger]] = {}
         for node_config in config.node_configs.values():
-            trigger_factories[node_config.trigger_key] = node_config.trigger_factory
-        return trigger_factories
+            existing_type = trigger_types.get(node_config.trigger_key)
+            if existing_type and existing_type is not node_config.trigger_type:
+                raise ValueError(
+                    f"Conflicting trigger types for key '{node_config.trigger_key}': "
+                    f"{existing_type.__name__} vs {node_config.trigger_type.__name__}"
+                )
+            trigger_types[node_config.trigger_key] = node_config.trigger_type
+
+        container = Container()
+        for trigger_key, trigger_type in trigger_types.items():
+            container.register(trigger_key, trigger_type)
+        return container
+
+    @staticmethod
+    def _build_trigger_factories(container: Container) -> dict[str, TriggerFactory]:
+        return {
+            trigger_key: (lambda trigger_key=trigger_key: container.resolve(trigger_key))
+            for trigger_key in container.registrations
+        }
 
 
 def build_skill_routing_workflow(
@@ -597,5 +643,5 @@ def build_skill_routing_trigger_factories() -> dict[str, TriggerFactory]:
 
 def build_skill_routing_state_machine(
     route_overrides: dict[str, TriggerRoutesDTO] | None = None,
-) -> StatefulWorkflow:
+) -> MachineState:
     return SkillRoutingStateMachineFactory(route_overrides=route_overrides).create()

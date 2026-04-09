@@ -2,6 +2,7 @@ import unittest
 
 from state_machine.skill_routing import (
     IsTransferTrigger,
+    MachineState,
     SkillRoutingContextDTO,
     SkillRoutingKeys,
     SkillRoutingStateMachineFactory,
@@ -14,7 +15,16 @@ from state_machine.dto import TriggerRoutesDTO
 class SkillRoutingSchemeTests(unittest.TestCase):
     def test_factory_create_builds_machine(self) -> None:
         machine = SkillRoutingStateMachineFactory().create()
+        self.assertIsInstance(machine, MachineState)
         self.assertEqual(machine.current_node, SkillRoutingKeys.INIT_SKILL_RUN)
+
+    def test_factory_trigger_factories_resolve_from_di(self) -> None:
+        trigger_factories = SkillRoutingStateMachineFactory().create_trigger_factories()
+        first = trigger_factories[SkillRoutingKeys.IS_TRANSFER]()
+        second = trigger_factories[SkillRoutingKeys.IS_TRANSFER]()
+        self.assertIsInstance(first, IsTransferTrigger)
+        self.assertIsInstance(second, IsTransferTrigger)
+        self.assertIsNot(first, second)
 
     def test_skill_routing_workflow_has_no_cycles(self) -> None:
         workflow = build_skill_routing_workflow()
